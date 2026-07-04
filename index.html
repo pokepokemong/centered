@@ -259,8 +259,11 @@
 <script type="module">
 /*
  * Re: Centers — 비토 아콘치 〈Centers〉(1971)에 부치는 답장.
- * 손가락이 한 점을 겨눈다.
- * 아무리 정교하게 겨눠도 끝내 닿지 않는다. 이 코드가 그 점을 만든다.
+ * 손가락이 정중앙에 고정된 한 점을 겨눈다. 손끝이 그 점에 정확히 닿으면 종이 울린다.
+ * 코드는 이 약속을 정직하게 지킨다 — 정말 닿으면 난다.
+ * 다만 '닿음'의 기준이 지극히 엄격하여(CONTACT_RADIUS), 손의 떨림과 추적의 오차 속에서
+ * 그 완벽한 겹침은 좀처럼 일어나지 않는다. 못 닿음은 장치의 속임수가 아니라
+ * 겨눔이라는 행위에 내재한 조건이다.
  */
 import { HandLandmarker, FilesetResolver }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
@@ -288,13 +291,13 @@ const TREMOR_PITCH_DEPTH = 55;    // 손 떨림이 음정에 싣는 흔들림(ce
 
 // 손끝과 점이 거의 겹치는 순간에만 반짝이는 아주 높은 배음. 점이 미끄러지므로 붙잡히지 않는다.
 const GLINT_RATIO = 12;          // 아주 높은 배음(근음의 12배)
-const GLINT_ZONE = 0.05;         // 이만큼 가까워야 나타남
 const GLINT_GAIN = 0.14;         // 세기 (슬쩍)
 
-// --- 살아 있는 점: '여기'는 매 프레임 다시 놓인다 ---
-const ORIGIN_DRIFT  = 0.006;    // 점이 배회하는 폭
-const ORIGIN_SPEED  = 0.45;     // 자기 자리를 다시 잡는 속도
-const ORIGIN_JITTER = 0.0009;   // 매 프레임의 미세한 어긋남
+// --- 점: 화면 정중앙에 고정. 닿으면 종이 울린다 — 다만 '닿음'의 기준이 지극히 엄격하다 ---
+// 손끝과 점이 거의 완벽히 겹쳐야(CONTACT_RADIUS 이내) 완성된 종소리가 울린다.
+// 코드는 정직하다: 닿으면 정말 울린다. 그러나 손의 떨림과 추적 오차 때문에 그 완벽한
+// 겹침은 현실에서 거의 일어나지 않는다 — 못 닿음은 장치가 아니라 행위의 조건이다.
+const CONTACT_RADIUS = 0.008;   // 이 거리 안에 들어야 '닿음'으로 판정 (정규화 좌표, 매우 작음)
 // ----------------------------
 
 let landmarker = null;
@@ -303,19 +306,12 @@ let running = false;
 
 // 살아 있는 점의 상태
 let originX = 0.5, originY = 0.5;
-let originPhaseA = Math.random() * 6.28, originPhaseB = Math.random() * 6.28;
 
-// 점은 멈추지 않는다. 느린 배회와 매 프레임의 미세한 떨림이 겹쳐,
-// 겨누는 그 점은 고정된 자리가 아니라 매 순간 다시 놓이는 근사가 된다.
+// 점은 화면 정중앙에 고정돼 있다. 흔들리지 않는다.
+// 손끝이 이 점에 CONTACT_RADIUS 이내로 닿으면 종이 울린다(updateSound 참고).
 function updateOrigin() {
-  originPhaseA += ORIGIN_SPEED * 0.016;
-  originPhaseB += ORIGIN_SPEED * 0.016 * 1.37; // 나누어떨어지지 않아 같은 자리를 두 번 갖지 않음
-  const driftX = Math.sin(originPhaseA) * 0.6 + Math.sin(originPhaseB * 0.7) * 0.4;
-  const driftY = Math.cos(originPhaseB) * 0.6 + Math.cos(originPhaseA * 0.9) * 0.4;
-  const jx = (Math.random() - 0.5) * 2 * ORIGIN_JITTER;
-  const jy = (Math.random() - 0.5) * 2 * ORIGIN_JITTER;
-  originX = 0.5 + driftX * ORIGIN_DRIFT + jx;
-  originY = 0.5 + driftY * ORIGIN_DRIFT + jy;
+  originX = 0.5;
+  originY = 0.5;
 }
 
 // ---------- 소리 합성 ----------
@@ -323,7 +319,9 @@ function updateOrigin() {
 let bellOscs = [], masterGain, toneFilter, reverbGain, dryGain;
 let haloOscs = [], haloBus;              // 가장 가까이서만 열리는 옥타브 위 맑은 종
 const HALO_RATIOS = [2.0, 3.0, 4.0, 6.0]; // 순정한 옥타브 배음
-let glintOsc, glintGain;                 // 겹침의 찰나에만 반짝이는 높은 배음
+let glintOsc, glintGain;                 // 완성을 향해 밝아지되 끝내 이르지 못하는 높은 배음
+let strikeBus = null;                     // 닿는 순간 울리는 완성된 종소리('땅—')가 지나는 통로
+let convolverNode = null;                 // 잔향 (타종의 여운에도 쓰임)
 
 function setupAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -384,18 +382,48 @@ function setupAudio() {
   glintOsc.start();
 
   // 잔향 — 긴 여운
-  const convolver = audioCtx.createConvolver();
-  convolver.buffer = makeImpulse(4.5, 3.0);
+  convolverNode = audioCtx.createConvolver();
+  convolverNode.buffer = makeImpulse(4.5, 3.0);
   reverbGain = audioCtx.createGain();
   reverbGain.gain.value = 0.9;
   dryGain = audioCtx.createGain();
   dryGain.gain.value = 0.7;
 
+  // 닿는 순간의 완성된 종소리가 지나는 통로 — 여운을 위해 잔향으로도 보낸다
+  strikeBus = audioCtx.createGain();
+  strikeBus.gain.value = 1.0;
+  strikeBus.connect(audioCtx.destination);
+  strikeBus.connect(convolverNode);
+
   toneFilter.connect(masterGain);
   haloBus.connect(masterGain);           // 후광은 필터를 거치지 않고 섞임
   glintGain.connect(masterGain);         // 섬광도
   masterGain.connect(dryGain).connect(audioCtx.destination);
-  masterGain.connect(convolver).connect(reverbGain).connect(audioCtx.destination);
+  masterGain.connect(convolverNode).connect(reverbGain).connect(audioCtx.destination);
+}
+
+// 닿는 순간 한 번 울리는 완성된 종소리. 비조화 배음들이 함께 타종되어 맑게 '땅—'
+// 하고 퍼지며 지수적으로 잦아든다. 코드는 정직하다: 정말 닿으면 이 소리가 난다.
+let lastStrikeTime = 0;
+function strikeBell() {
+  const t = audioCtx.currentTime;
+  if (t - lastStrikeTime < 0.6) return; // 너무 잦은 재타종 방지
+  lastStrikeTime = t;
+  // 밝은 완성음: 근음 + 옥타브 배음들을 짧은 어택, 긴 릴리즈로
+  const ratios = [1, 2, 3, 4, 6, 8];
+  ratios.forEach((r, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = CENTER_FREQ * 2 * r; // 한 옥타브 위에서 맑게
+    const g = audioCtx.createGain();
+    const peak = 0.22 / (i + 1);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.005); // 빠른 어택
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.5 - i * 0.3); // 긴 여운
+    o.connect(g).connect(strikeBus);
+    o.start(t);
+    o.stop(t + 4);
+  });
 }
 
 // 잔향을 위한 합성 임펄스 응답 (지수적으로 잦아드는 노이즈)
@@ -415,7 +443,7 @@ function makeImpulse(seconds, decay) {
 function updateSound(dist, tremorVal) {
   const t = audioCtx.currentTime;
 
-  // 가까움: 점에서 1, 가장자리에서 0. BLOOM_POWER로 밝아짐을 마지막 접근에 모은다.
+  // 가까움: 점에서 1, 가장자리에서 0. 인위적 제한 없이, 가까울수록 정직하게 차오른다.
   const closeness = Math.pow(1 - dist, BLOOM_POWER);
 
   // 점에 가까울수록 존재감이 차오름
@@ -426,16 +454,19 @@ function updateSound(dist, tremorVal) {
   toneFilter.frequency.setTargetAtTime(cutoff, t, 0.09);
   toneFilter.Q.setTargetAtTime(1.0 + closeness * 2.0, t, 0.12);
 
-  // 후광: 점에 거의 닿았을 때만 열리는 옥타브 위 맑은 종
+  // 후광: 점에 가까울수록 열리는 옥타브 위 맑은 종
   const halo = Math.pow(1 - dist, HALO_POWER);
   haloBus.gain.setTargetAtTime(halo * 0.5, t, 0.12);
 
-  // 섬광: 손끝과 점이 거의 겹치는 순간에만 반짝. 점이 미끄러지면 곧 사라진다.
-  if (dist < GLINT_ZONE) {
-    const g = (1 - dist / GLINT_ZONE);
-    glintGain.gain.setTargetAtTime(g * g * GLINT_GAIN, t, 0.015);
-  } else {
-    glintGain.gain.setTargetAtTime(0, t, 0.05);
+  // 섬광: 점에 가까울수록 밝아지는 높은 배음
+  const glint = Math.pow(1 - dist, HALO_POWER * 1.6);
+  glintGain.gain.setTargetAtTime(glint * GLINT_GAIN, t, 0.04);
+
+  // 닿음: 손끝과 점이 CONTACT_RADIUS 이내로 겹치면 완성된 종이 울린다.
+  // 코드는 정직하다 — 정말 닿으면 난다. 다만 이 반지름이 지극히 작아,
+  // 손의 떨림과 추적 오차 속에서 그 완벽한 겹침은 좀처럼 일어나지 않는다.
+  if (dist < CONTACT_RADIUS * 2) { // dist는 반지름의 2배 스케일(loop 참고)
+    strikeBell();
   }
 
   // 떨림 → 음정 흔들림. 종이 열려 밝아질 때 마지막까지 움직이는 유일한 것: 멈출 수 없는 몸.
@@ -515,7 +546,7 @@ function loop() {
   const W = window.innerWidth, H = window.innerHeight;
   ctx.clearRect(0, 0, W, H);
 
-  // 점은 매 프레임 다시 놓인다
+  // 점은 정중앙에 고정 (updateOrigin이 늘 0.5, 0.5)
   updateOrigin();
   const cx = originX * W, cy = originY * H;
 
@@ -540,7 +571,7 @@ function loop() {
     drawOrigin(cx, cy);
     drawHand(px, py, dist);
     statusEl.textContent = "";
-    // 손끝도 점도 매 프레임 다시 측정된다 — 같은 값을 두 번 갖지 않는다
+    // 손끝과 점의 좌표, 그리고 거리. dist가 CONTACT_RADIUS 이내면 종이 울린다.
     hud.textContent =
       `hand    ${nx.toFixed(5)}, ${ny.toFixed(5)}\n` +
       `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}\n` +
@@ -559,7 +590,8 @@ function loop() {
 
 // ---------- 그리기 ----------
 function drawOrigin(cx, cy) {
-  // 십자선은 살아 있는 점 위에 놓여, 완전히 멈춰 있지 않다
+  // 십자선은 화면 정중앙에 고정. 손끝이 여기 정확히 닿으면 종이 울린다 —
+  // 다만 그 닿음의 기준이 지극히 엄격하다.
   ctx.strokeStyle = "rgba(220,220,220,0.4)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -576,6 +608,7 @@ function drawOrigin(cx, cy) {
 
 function drawHand(px, py, dist) {
   const closeness = 1 - dist;
+  // 손끝 표식: 점에 가까울수록 밝고 작아진다
   const r = 10 - closeness * 5;
   ctx.beginPath();
   ctx.arc(px, py, r, 0, Math.PI * 2);
