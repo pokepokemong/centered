@@ -97,23 +97,6 @@
   }
   .fade-out { opacity: 0; pointer-events: none; }
 
-  /* ---- HUD ---- */
-  #hud {
-    position: absolute;
-    left: calc(1.2rem + env(safe-area-inset-left));
-    bottom: calc(1.4rem + env(safe-area-inset-bottom));
-    font-size: 0.72rem;
-    color: var(--dim);
-    letter-spacing: 0.03em;
-    line-height: 1.5;
-    font-variant-numeric: tabular-nums;
-    white-space: pre;
-    z-index: 5;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-  }
-  #hud.show { opacity: 1; }
   #status {
     position: absolute;
     top: calc(1.2rem + env(safe-area-inset-top));
@@ -127,23 +110,6 @@
     z-index: 5;
     text-align: center;
   }
-  #toggle {
-    position: absolute;
-    right: calc(1.2rem + env(safe-area-inset-right));
-    bottom: calc(1.4rem + env(safe-area-inset-bottom));
-    font-size: 0.72rem;
-    color: var(--dim);
-    background: rgba(10,10,10,0.4);
-    border: 1px solid #2a2a2a;
-    padding: 0.6rem 1rem;
-    border-radius: 2px;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    z-index: 6;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-  }
-  #toggle:hover { color: var(--fg); border-color: var(--dim); }
 </style>
 </head>
 <body>
@@ -152,8 +118,6 @@
   <canvas id="overlay"></canvas>
 
   <div id="status"></div>
-  <div id="hud"></div>
-  <button id="toggle">데이터 표시</button>
 
   <div id="intro">
     <h1>Centers, <em>Again</em></h1>
@@ -175,24 +139,55 @@ const ctx     = canvas.getContext("2d");
 const intro   = document.getElementById("intro");
 const startBtn= document.getElementById("start");
 const statusEl= document.getElementById("status");
-const hud     = document.getElementById("hud");
-const toggle  = document.getElementById("toggle");
 
 // ---------- config ----------
 const CENTER_FREQ = 220;        // the single origin tone (Hz) — one center for everyone
 const MAX_HARMONIC_GAIN = 0.35; // loudness of the "reference" tone that beats against the fundamental
 const TREMOR_PITCH_DEPTH = 90;  // cents of pitch wobble at full tremor
-const MAX_DETUNE_CENTS = 55;    // how far the reference tone drifts out of tune at the edge
-const CONVERGE_POWER = 2.2;     // >1 makes the "in tune" zone snap tighter near the very center
+const MAX_DETUNE_CENTS = 120;   // how far the reference tone drifts out of tune at the edge
+const CONVERGE_POWER = 3;       // >1 makes the "in tune" zone snap tighter near the very center
+
+// --- dwell: reaching the center is not an end but a beginning ---
+const DWELL_ZONE = 0.14;        // how close (dist) you must be for dwell to accumulate
+const DWELL_RISE = 0.35;        // how fast dwell fills per second while held at center
+const DWELL_FALL = 0.9;         // how fast dwell drains per second once you leave / tremble
+const TREMOR_PENALTY = 6.0;     // how strongly tremble eats into dwell accumulation
+
+// --- living origin: "here" is never a fixed fact, it is re-computed every frame ---
+// The point you aim at is itself in motion, so it can never be reached — not because
+// your hand shakes, but because the center was never still to begin with.
+const ORIGIN_DRIFT = 0.010;     // amplitude of the origin's wander (in normalized 0..1 units)
+const ORIGIN_SPEED = 0.7;       // how quickly the origin re-computes its position
+const ORIGIN_JITTER = 0.0016;   // per-frame micro-reconstruction — the last, irreducible gap
 // ----------------------------
 
 let landmarker = null;
 let audioCtx = null;
 let running = false;
-let showData = false;
+let dwell = 0;                  // 0..1 — the accumulated "staying", the subject of the piece
+let lastFrameTime = null;
+
+// living origin state — the smooth wander plus an irreducible per-frame jitter
+let originX = 0.5, originY = 0.5;      // current re-computed "here", in normalized coords
+let originPhaseA = Math.random() * 6.28, originPhaseB = Math.random() * 6.28;
+
+// The origin never rests. A slow drift (it re-forms its position continuously) plus a
+// per-frame jitter (each measurement returns a slightly different value) means the very
+// point you aim at is an approximation being rewritten, not a fact being found.
+function updateOrigin(nowSec) {
+  originPhaseA += ORIGIN_SPEED * 0.016;
+  originPhaseB += ORIGIN_SPEED * 0.016 * 1.37; // incommensurate → never repeats cleanly
+  const driftX = Math.sin(originPhaseA) * 0.6 + Math.sin(originPhaseB * 0.7) * 0.4;
+  const driftY = Math.cos(originPhaseB) * 0.6 + Math.cos(originPhaseA * 0.9) * 0.4;
+  const jx = (Math.random() - 0.5) * 2 * ORIGIN_JITTER;
+  const jy = (Math.random() - 0.5) * 2 * ORIGIN_JITTER;
+  originX = 0.5 + driftX * ORIGIN_DRIFT + jx;
+  originY = 0.5 + driftY * ORIGIN_DRIFT + jy;
+}
 
 // audio nodes
 let osc, refOsc, refGain, masterGain, pitchParam, refDetune;
+let growGains = [], growOscs = [], reverbGain, dryGain;
 
 function setupAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -215,14 +210,53 @@ function setupAudio() {
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0; // silent until a hand appears
 
+  // reverb — a space that opens as dwell grows
+  const convolver = audioCtx.createConvolver();
+  convolver.buffer = makeImpulse(2.6, 2.4);
+  reverbGain = audioCtx.createGain();
+  reverbGain.gain.value = 0;      // closed until dwell opens it
+  dryGain = audioCtx.createGain();
+  dryGain.gain.value = 1;
+
+  masterGain.connect(dryGain).connect(audioCtx.destination);
+  masterGain.connect(convolver).connect(reverbGain).connect(audioCtx.destination);
+
   osc.connect(masterGain);
   refOsc.connect(refGain).connect(masterGain);
-  masterGain.connect(audioCtx.destination);
+
+  // growth partials — harmonics that are born one by one as you stay.
+  // Reaching the center opens a chord that wasn't there before.
+  const ratios = [1.5, 2.0, 3.0]; // fifth, octave, octave+fifth
+  ratios.forEach((r) => {
+    const o = audioCtx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = CENTER_FREQ * r;
+    const g = audioCtx.createGain();
+    g.gain.value = 0;
+    o.connect(g).connect(masterGain);
+    o.start();
+    growOscs.push(o);
+    growGains.push(g);
+  });
 
   osc.start();
   refOsc.start();
   pitchParam = osc.frequency;
   refDetune = refOsc.detune; // in cents
+}
+
+// simple decaying-noise impulse response for the convolver
+function makeImpulse(seconds, decay) {
+  const rate = audioCtx.sampleRate;
+  const len = Math.floor(rate * seconds);
+  const buf = audioCtx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
 }
 
 async function setupHands() {
@@ -309,11 +343,15 @@ function loop() {
   const H = window.innerHeight;
   ctx.clearRect(0, 0, W, H);
 
-  const cx = W / 2;
-  const cy = H / 2;
+  // time delta for frame-rate-independent dwell
+  const nowSec = performance.now() / 1000;
+  const dt = lastFrameTime === null ? 0.016 : Math.min(0.1, nowSec - lastFrameTime);
+  lastFrameTime = nowSec;
 
-  // draw the origin (hidden center of the gaze)
-  drawOrigin(cx, cy);
+  // the origin re-computes itself every frame — "here" is never the same point twice
+  updateOrigin(nowSec);
+  const cx = originX * W;
+  const cy = originY * H;
 
   if (result.landmarks && result.landmarks.length > 0) {
     // index fingertip = landmark 8
@@ -324,9 +362,9 @@ function loop() {
     const px = nx * W;
     const py = ny * H;
 
-    // distance from center, normalized 0..~1
-    const dx = nx - 0.5;
-    const dy = ny - 0.5;
+    // distance from the LIVING origin, normalized 0..~1
+    const dx = nx - originX;
+    const dy = ny - originY;
     const dist = Math.min(1, Math.hypot(dx, dy) * 2);
 
     // tremor = frame-to-frame movement of the fingertip
@@ -337,23 +375,37 @@ function loop() {
     }
     lastX = nx; lastY = ny;
 
-    updateSound(dist, tremor);
+    // --- DWELL: staying at the center grows something; you cannot stay still ---
+    if (dist < DWELL_ZONE) {
+      // inside the zone: fill, but tremble eats the gain, so a shaking hand
+      // barely accumulates. Perfect stillness (impossible) would fill fastest.
+      const stillness = Math.max(0, 1 - tremor * TREMOR_PENALTY);
+      dwell += DWELL_RISE * stillness * dt;
+    } else {
+      dwell -= DWELL_FALL * dt; // left the center: it drains back
+    }
+    dwell = Math.max(0, Math.min(1, dwell));
+
+    updateSound(dist, tremor, dwell);
+    drawSpread(cx, cy, dwell, tremor, nowSec);
+    drawOrigin(cx, cy, dwell, tremor);
     drawHand(px, py, cx, cy, dist);
-    updateHud(nx, ny, tip.z, dist, tremor);
     statusEl.textContent = "";
   } else {
-    // no hand: fade to silence
+    // no hand: fade to silence, dwell drains away
     if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
     lastX = lastY = null;
     tremor = 0;
+    dwell = Math.max(0, dwell - DWELL_FALL * dt);
+    drawSpread(cx, cy, dwell, 0, nowSec);
+    drawOrigin(cx, cy, dwell, 0);
     statusEl.textContent = "손을 들어 중심을 겨누세요";
-    if (showData) hud.textContent = "";
   }
 
   requestAnimationFrame(loop);
 }
 
-function updateSound(dist, tremorVal) {
+function updateSound(dist, tremorVal, dwellVal) {
   const t = audioCtx.currentTime;
   // hand present -> audible
   masterGain.gain.setTargetAtTime(0.22, t, 0.05);
@@ -368,9 +420,9 @@ function updateSound(dist, tremorVal) {
   const detune = (1 - closeness) * MAX_DETUNE_CENTS;
   refDetune.setTargetAtTime(detune, t, 0.05);
 
-  // the reference tone is loudest in the mid-range where the beating is the
-  // clearest cue, and eases off right at the center so the lock feels clean.
-  const refLevel = MAX_HARMONIC_GAIN * (1 - closeness) + 0.12 * closeness;
+  // the reference tone is loud while off-center (strong beating) and fades
+  // to near-silence at the center, so the lock into one clean tone is obvious.
+  const refLevel = MAX_HARMONIC_GAIN * (1 - closeness);
   refGain.gain.setTargetAtTime(refLevel, t, 0.05);
 
   // tremor -> pitch wobble in cents. Purer tone at center makes it stand out.
@@ -379,37 +431,79 @@ function updateSound(dist, tremorVal) {
   pitchParam.setTargetAtTime(wobble, t, 0.02);
   // reference tracks the same fundamental; its detune offset does the tuning work
   refOsc.frequency.setTargetAtTime(wobble, t, 0.02);
+
+  // --- GROWTH: dwell opens a chord and a space that weren't there before ---
+  // each partial is born in turn as dwell crosses successive thirds.
+  growGains.forEach((g, i) => {
+    const threshold = i / growGains.length;           // 0, .33, .66
+    const local = Math.max(0, (dwellVal - threshold) * growGains.length);
+    const level = Math.min(1, local) * 0.16;
+    g.gain.setTargetAtTime(level, t, 0.15);
+    // partials also inherit the tremor wobble, so growth never fully stabilizes
+    growOscs[i].frequency.setTargetAtTime(wobble * [1.5, 2.0, 3.0][i], t, 0.05);
+  });
+
+  // reverb space opens with dwell; the dry signal steps back a little
+  reverbGain.gain.setTargetAtTime(dwellVal * 0.9, t, 0.2);
+  dryGain.gain.setTargetAtTime(1 - dwellVal * 0.25, t, 0.2);
 }
 
 // ---------- drawing ----------
-function drawOrigin(cx, cy) {
-  const pulse = 6;
-  ctx.strokeStyle = "rgba(200,200,200,0.35)";
+function drawOrigin(cx, cy, dwellVal, tremorVal) {
+  // cx, cy already carry the living origin's own motion (computed in updateOrigin).
+  // The center is not perturbed by the hand — it was never still on its own.
+  const ox = cx;
+  const oy = cy;
+
+  const glow = 0.35 + dwellVal * 0.5;
+  ctx.strokeStyle = `rgba(220,220,220,${glow})`;
   ctx.lineWidth = 1;
   // crosshair
   ctx.beginPath();
-  ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 4, cy);
-  ctx.moveTo(cx + 4, cy); ctx.lineTo(cx + 14, cy);
-  ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 4);
-  ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy + 14);
+  ctx.moveTo(ox - 14, oy); ctx.lineTo(ox - 4, oy);
+  ctx.moveTo(ox + 4, oy); ctx.lineTo(ox + 14, oy);
+  ctx.moveTo(ox, oy - 14); ctx.lineTo(ox, oy - 4);
+  ctx.moveTo(ox, oy + 4); ctx.lineTo(ox, oy + 14);
   ctx.stroke();
+
+  const pulse = 6 + dwellVal * 10;
   ctx.beginPath();
-  ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(230,230,230,0.55)";
+  ctx.arc(ox, oy, pulse, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(240,240,240,${0.5 + dwellVal * 0.4})`;
   ctx.fill();
 }
 
+// concentric waves that spread from the center as dwell grows.
+// tremor perturbs the rings so the spreading never becomes calm.
+function drawSpread(cx, cy, dwellVal, tremorVal, nowSec) {
+  if (dwellVal <= 0.001) return;
+  const W = window.innerWidth, H = window.innerHeight;
+  const maxR = Math.hypot(W, H) * 0.5;
+
+  // soft radial wash of light that grows with dwell
+  const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * (0.3 + dwellVal * 0.9));
+  wash.addColorStop(0, `rgba(255,255,255,${dwellVal * 0.10})`);
+  wash.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, W, H);
+
+  // expanding rings — number and reach grow with dwell
+  const rings = Math.floor(2 + dwellVal * 5);
+  for (let i = 0; i < rings; i++) {
+    const phase = (nowSec * 0.25 + i / rings) % 1;
+    const r = phase * maxR * (0.25 + dwellVal * 0.9);
+    const wobble = 1 + Math.sin(nowSec * 8 + i) * tremorVal * 4; // tremble distorts the ring
+    const alpha = (1 - phase) * dwellVal * 0.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * wobble, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(235,235,235,${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
 function drawHand(px, py, cx, cy, dist) {
-  // line from fingertip toward origin — the act of aiming
   const closeness = 1 - dist;
-  ctx.strokeStyle = `rgba(230,230,230,${0.15 + closeness * 0.5})`;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 4]);
-  ctx.beginPath();
-  ctx.moveTo(px, py);
-  ctx.lineTo(cx, cy);
-  ctx.stroke();
-  ctx.setLineDash([]);
 
   // fingertip marker — converges (shrinks, brightens) near center
   const r = 10 - closeness * 5;
@@ -419,20 +513,8 @@ function drawHand(px, py, cx, cy, dist) {
   ctx.fill();
 }
 
-function updateHud(nx, ny, z, dist, tremorVal) {
-  if (!showData) return;
-  hud.textContent =
-    `X ${nx.toFixed(3)}   Y ${ny.toFixed(3)}   Z ${z.toFixed(3)}\n` +
-    `중심거리 ${dist.toFixed(3)}   떨림 ${(tremorVal*1000).toFixed(1)}`;
-}
-
 // ---------- controls ----------
-toggle.addEventListener("click", () => {
-  showData = !showData;
-  hud.classList.toggle("show", showData);
-  toggle.textContent = showData ? "데이터 숨기기" : "데이터 표시";
-  if (!showData) hud.textContent = "";
-});
+// no HUD, no toggle — the tremble is shown, not numbered.
 
 startBtn.addEventListener("click", async () => {
   startBtn.disabled = true;
