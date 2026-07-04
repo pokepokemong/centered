@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -106,7 +106,7 @@
     #start:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   }
   .fade-out { opacity: 0 !important; pointer-events: none; }
- 
+
   #status {
     position: absolute;
     top: calc(1.2rem + env(safe-area-inset-top));
@@ -120,7 +120,7 @@
     z-index: 5;
     text-align: center;
   }
- 
+
   /* coordinate readout — the position, re-measured every frame, never still */
   #hud {
     position: absolute;
@@ -137,28 +137,30 @@
     opacity: 0.8;
     pointer-events: none;
   }
- 
+
   /* ---- info button + panel (artwork statement) ---- */
   #infoBtn {
     position: absolute;
-    right: calc(1.1rem + env(safe-area-inset-right));
-    bottom: calc(1.2rem + env(safe-area-inset-bottom));
-    width: 2rem; height: 2rem;
-    border: 1px solid #333;
+    right: calc(1.2rem + env(safe-area-inset-right));
+    bottom: calc(1.4rem + env(safe-area-inset-bottom));
+    width: 2.5rem; height: 2.5rem;
+    border: 1.5px solid rgba(230,230,230,0.7);
     border-radius: 50%;
-    background: rgba(10,10,10,0.35);
-    color: var(--dim);
-    font-size: 0.9rem;
+    background: rgba(10,10,10,0.6);
+    color: var(--fg);
+    font-size: 1.15rem;
     font-style: italic;
     font-family: Georgia, "Times New Roman", serif;
     cursor: pointer;
     z-index: 6;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    transition: color 0.2s, border-color 0.2s;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    transition: all 0.2s;
   }
-  #infoBtn:active, #infoBtn.open { color: var(--fg); border-color: var(--dim); }
- 
+  #infoBtn:active, #infoBtn.open,
+  #infoBtn:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
   #info {
     position: absolute;
     inset: 0;
@@ -222,11 +224,11 @@
 <div id="stage">
   <video id="video" playsinline muted></video>
   <canvas id="overlay"></canvas>
- 
+
   <div id="status"></div>
   <div id="hud"></div>
   <button id="infoBtn" aria-label="작품 설명">i</button>
- 
+
   <div id="intro">
     <div class="introInner">
       <h1><em>Re:</em> Centers</h1>
@@ -237,28 +239,32 @@
       <p class="privacy">웹캠 영상은 이 기기에서만 처리되며 어디에도 저장되지 않습니다.</p>
     </div>
   </div>
- 
+
   <!-- artwork statement overlay (re-openable after start via the i button) -->
   <div id="info">
     <div class="inner">
       <h2><em>Re:</em> Centers</h2>
-      <div class="medium">단채널 인터랙티브 사운드 설치</div>
- 
-      <div class="sub">Re:Centers </div>
-      <p>본 작품은 비토 아콘치(Vito Acconci)의 영상 작업<Centers> (1971)가 제기한 ‘중심을 겨누는 신체’의 문제를 동시대의 인터랙티브 환경으로 확장한다. 아콘치가 비디오의 폐쇄회로 안에서 화면의 중심을 향해 신체와 시선을 정렬했다면, 이 작업은 그 중심을 끊임없이 움직이는 원점으로 전환한다.</p>
+      <div class="medium">웹 기반 인터랙티브 사운드</div>
+
+      <p>본 작품은 비토 아콘치(Vito Acconci)의 영상 작업 〈Centers〉(1971)가 제기한 ‘중심을 겨누는 신체’의 문제를 동시대의 인터랙티브 환경으로 확장한다. 아콘치가 비디오의 폐쇄회로 안에서 화면의 중심을 향해 신체와 시선을 정렬했다면, 이 작업은 그 중심을 끊임없이 움직이는 원점으로 전환한다.</p>
       <p>관객이 허공의 한 점을 향해 손을 뻗을 때, 신체의 정렬과 그에 반응하는 소리는 분명한 물리적 사건으로 발생한다. 그러나 손끝이 향하는 원점은 결코 붙잡히지 않는다. ‘여기’라 불리는 그 지점은 선험적으로 존재하는 절대적 위치가 아니며, 겨누는 행위 속에서 매 순간 새롭게 구성되는 근사다.</p>
       <p>따라서 지목과 대상 사이에 남는 어긋남은 겨눔이라는 행위에 내재한 조건이다. 신체는 끊임없이 위치를 조정하고 감각은 그 변화에 반응하지만, 원점은 하나의 고정된 실체로 머무르지 않는다. 주체와 대상은 서로를 향해 끊임없이 조정되는 관계 속에서 존재한다.</p>
       <p>이 작품에서 겨눔은 영원한 근사라는 상태 자체다. 완전한 일치에 이르지 못한 채 미세한 차이를 지속하는 신체의 움직임은, 중심을 향한 실패를 드러내기보다 애초에 절대적 중심이 부재한다는 사실을 드러낸다. 관객이 향하는 것은 끝내 수렴하지 않는 관계 속에서도 계속해서 세계를 구성하는 신체와 감각의 운동이다.</p>
- 
+
       <span class="close" id="infoClose">닫기</span>
     </div>
   </div>
 </div>
- 
+
 <script type="module">
+/*
+ * Re: Centers — 비토 아콘치 〈Centers〉(1971)에 부치는 답장.
+ * 손가락이 한 점을 겨눈다.
+ * 아무리 정교하게 겨눠도 끝내 닿지 않는다. 이 코드가 그 점을 만든다.
+ */
 import { HandLandmarker, FilesetResolver }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
- 
+
 const video    = document.getElementById("video");
 const canvas   = document.getElementById("overlay");
 const ctx      = canvas.getContext("2d");
@@ -269,48 +275,41 @@ const hud      = document.getElementById("hud");
 const infoBtn  = document.getElementById("infoBtn");
 const info     = document.getElementById("info");
 const infoClose= document.getElementById("infoClose");
- 
-// ---------- config ----------
-// singing bowl / bell: inharmonic partials shimmering against each other. as the
-// hand nears the center they open and brighten — and in the final approach a clear
-// upper-octave bell blooms in, so arriving at center feels like cresting into light.
-const CENTER_FREQ = 196;          // base pitch (Hz) — a low, calm G
-// classic bell-like inharmonic ratios (hum, prime, tierce, quint, nominal, upper)
-const BELL_RATIOS = [1.0, 2.0, 2.4, 3.0, 4.5, 5.33];
-const FILTER_DARK = 220;          // cutoff far from center (Hz) — dark, muffled ring
-const FILTER_BRIGHT = 9000;       // cutoff at center (Hz) — wide open, radiant
-const BLOOM_POWER = 2.6;          // higher → the opening concentrates into the final approach
-const HALO_POWER = 5;             // even sharper: the upper-octave "halo" only in the last stretch
-const TREMOR_PITCH_DEPTH = 55;    // cents of pitch wobble carried by the hand's tremor
- 
-// a single very high partial that flares ONLY when the fingertip nearly coincides
-// with the (moving) origin — a thin glint of light. because the origin keeps
-// slipping, this moment can never be held: it flickers and is gone.
-const GLINT_RATIO = 12;          // very high overtone (12× the base) — a bright sliver
-const GLINT_ZONE = 0.05;         // how close dist must be for the glint to appear
-const GLINT_GAIN = 0.14;         // peak loudness of the glint (kept slight, a whisper of light)
- 
-// --- living origin: "here" is re-formed every frame, never a fixed point ---
-const ORIGIN_DRIFT  = 0.006;    // amplitude of the origin's slow wander (normalized units)
-const ORIGIN_SPEED  = 0.45;     // how quickly the origin re-forms its position
-const ORIGIN_JITTER = 0.0009;   // per-frame micro-reconstruction — the last irreducible gap
+
+// ---------- 소리 ----------
+// 종소리. 점에서 멀면 어둡게 묻히고, 가까울수록 배음이 열려 밝아진다.
+const CENTER_FREQ = 196;          // 종의 근음(Hz)
+const BELL_RATIOS = [1.0, 2.0, 2.4, 3.0, 4.5, 5.33]; // 종 특유의 비조화 배음비
+const FILTER_DARK = 220;          // 점에서 멀 때 음색 (어둡게 묻힘)
+const FILTER_BRIGHT = 9000;       // 점에 닿을 때 음색 (활짝 열림)
+const BLOOM_POWER = 2.6;          // 클수록 밝아짐이 마지막 접근에 집중
+const HALO_POWER = 5;             // 옥타브 위 맑은 종이 아주 가까이서만 열림
+const TREMOR_PITCH_DEPTH = 55;    // 손 떨림이 음정에 싣는 흔들림(cents)
+
+// 손끝과 점이 거의 겹치는 순간에만 반짝이는 아주 높은 배음. 점이 미끄러지므로 붙잡히지 않는다.
+const GLINT_RATIO = 12;          // 아주 높은 배음(근음의 12배)
+const GLINT_ZONE = 0.05;         // 이만큼 가까워야 나타남
+const GLINT_GAIN = 0.14;         // 세기 (슬쩍)
+
+// --- 살아 있는 점: '여기'는 매 프레임 다시 놓인다 ---
+const ORIGIN_DRIFT  = 0.006;    // 점이 배회하는 폭
+const ORIGIN_SPEED  = 0.45;     // 자기 자리를 다시 잡는 속도
+const ORIGIN_JITTER = 0.0009;   // 매 프레임의 미세한 어긋남
 // ----------------------------
- 
+
 let landmarker = null;
 let audioCtx = null;
 let running = false;
- 
-// living origin state
+
+// 살아 있는 점의 상태
 let originX = 0.5, originY = 0.5;
 let originPhaseA = Math.random() * 6.28, originPhaseB = Math.random() * 6.28;
- 
-// The origin never rests: a slow drift (it re-forms continuously) plus a per-frame
-// jitter (each moment returns a slightly different value). The point you aim at is
-// an approximation being rewritten, not a fact being found — so it cannot be reached,
-// no matter how steady the hand.
+
+// 점은 멈추지 않는다. 느린 배회와 매 프레임의 미세한 떨림이 겹쳐,
+// 겨누는 그 점은 고정된 자리가 아니라 매 순간 다시 놓이는 근사가 된다.
 function updateOrigin() {
   originPhaseA += ORIGIN_SPEED * 0.016;
-  originPhaseB += ORIGIN_SPEED * 0.016 * 1.37; // incommensurate → never repeats cleanly
+  originPhaseB += ORIGIN_SPEED * 0.016 * 1.37; // 나누어떨어지지 않아 같은 자리를 두 번 갖지 않음
   const driftX = Math.sin(originPhaseA) * 0.6 + Math.sin(originPhaseB * 0.7) * 0.4;
   const driftY = Math.cos(originPhaseB) * 0.6 + Math.cos(originPhaseA * 0.9) * 0.4;
   const jx = (Math.random() - 0.5) * 2 * ORIGIN_JITTER;
@@ -318,73 +317,64 @@ function updateOrigin() {
   originX = 0.5 + driftX * ORIGIN_DRIFT + jx;
   originY = 0.5 + driftY * ORIGIN_DRIFT + jy;
 }
- 
-// ---------- audio ----------
-// A singing-bowl voice: inharmonic partials sustained together, run through a
-// low-pass that sweeps dark→bright, into a long reverb that gives the meditative
-// ring. Far from center: dark, muted. Near center: the upper partials shimmer
-// through and the tone opens — a bell blooming into light.
+
+// ---------- 소리 합성 ----------
+// 비조화 배음들이 어둠→빛 필터를 지나 긴 잔향으로 퍼진다.
 let bellOscs = [], masterGain, toneFilter, reverbGain, dryGain;
-let haloOscs = [], haloBus;              // upper-octave bell that blooms only at the very center
-const HALO_RATIOS = [2.0, 3.0, 4.0, 6.0]; // pure (harmonic) octave partials → clear, radiant
-let glintOsc, glintGain;                 // a single very high partial — the fleeting glint of coincidence
- 
+let haloOscs = [], haloBus;              // 가장 가까이서만 열리는 옥타브 위 맑은 종
+const HALO_RATIOS = [2.0, 3.0, 4.0, 6.0]; // 순정한 옥타브 배음
+let glintOsc, glintGain;                 // 겹침의 찰나에만 반짝이는 높은 배음
+
 function setupAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
- 
+
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0; // silent until a hand appears
- 
-  // low-pass that sweeps dark → bright (the bloom)
+  masterGain.gain.value = 0; // 손이 나타나기 전엔 침묵
+
+  // 어둠→빛 저역 통과 필터
   toneFilter = audioCtx.createBiquadFilter();
   toneFilter.type = "lowpass";
   toneFilter.frequency.value = FILTER_DARK;
   toneFilter.Q.value = 1.0;
- 
-  // inharmonic partials — the metallic, bell-like body
+
+  // 비조화 배음들 — 종의 몸
   BELL_RATIOS.forEach((ratio, i) => {
     const o = audioCtx.createOscillator();
     o.type = "sine";
     o.frequency.value = CENTER_FREQ * ratio;
- 
-    // a slow, tiny amplitude tremor per partial, each at a different rate, so the
-    // partials beat gently against one another — the living shimmer of a bowl that
-    // never fully settles.
+
+    // 배음마다 다른 속도로 아주 느리게 진폭이 흔들려, 완전히 멈추지 않는 일렁임을 만든다
     const lfo = audioCtx.createOscillator();
     lfo.type = "sine";
-    lfo.frequency.value = 0.15 + i * 0.07; // slightly different per partial
+    lfo.frequency.value = 0.15 + i * 0.07;
     const lfoGain = audioCtx.createGain();
     lfoGain.gain.value = 0.12;
- 
+
     const g = audioCtx.createGain();
-    g.gain.value = 0.5 / (i + 1.5); // higher partials quieter → warm, not harsh
+    g.gain.value = 0.5 / (i + 1.5); // 높은 배음일수록 여리게
     lfo.connect(lfoGain).connect(g.gain);
- 
+
     o.connect(g).connect(toneFilter);
     o.start();
     lfo.start();
     bellOscs.push(o);
   });
- 
-  // HALO: a clear, high, purely-harmonic bell that stays silent until the hand is
-  // almost exactly at center, then blooms in — the sense of cresting into light,
-  // of arriving. it bypasses the dark filter so it rings out bright and open.
+
+  // 후광: 점에 거의 닿은 순간에만 열리는 옥타브 위 맑은 종. 어두운 필터를 우회한다.
   haloBus = audioCtx.createGain();
-  haloBus.gain.value = 0; // opened only near the very center
+  haloBus.gain.value = 0;
   HALO_RATIOS.forEach((ratio, i) => {
     const o = audioCtx.createOscillator();
     o.type = "sine";
-    o.frequency.value = CENTER_FREQ * 2 * ratio; // an octave up from the bowl
+    o.frequency.value = CENTER_FREQ * 2 * ratio; // 한 옥타브 위
     const g = audioCtx.createGain();
     g.gain.value = 0.4 / (i + 1.5);
     o.connect(g).connect(haloBus);
     o.start();
     haloOscs.push(o);
   });
- 
-  // GLINT: one very high sine, silent almost always, flaring only in the instant
-  // the fingertip nearly coincides with the moving origin. bypasses the filter so
-  // it cuts through as a thin sliver of light — then the origin slips and it's gone.
+
+  // 섬광: 손끝과 점이 겹치는 찰나에만 타오르는 아주 높은 사인파. 점이 미끄러지면 사라진다.
   glintOsc = audioCtx.createOscillator();
   glintOsc.type = "sine";
   glintOsc.frequency.value = CENTER_FREQ * GLINT_RATIO;
@@ -392,23 +382,23 @@ function setupAudio() {
   glintGain.gain.value = 0;
   glintOsc.connect(glintGain);
   glintOsc.start();
- 
-  // reverb — a long tail for the meditative ring / lingering resonance
+
+  // 잔향 — 긴 여운
   const convolver = audioCtx.createConvolver();
   convolver.buffer = makeImpulse(4.5, 3.0);
   reverbGain = audioCtx.createGain();
   reverbGain.gain.value = 0.9;
   dryGain = audioCtx.createGain();
   dryGain.gain.value = 0.7;
- 
+
   toneFilter.connect(masterGain);
-  haloBus.connect(masterGain);           // halo joins the mix, but bypasses the dark low-pass
-  glintGain.connect(masterGain);         // glint too — a bright sliver above everything
+  haloBus.connect(masterGain);           // 후광은 필터를 거치지 않고 섞임
+  glintGain.connect(masterGain);         // 섬광도
   masterGain.connect(dryGain).connect(audioCtx.destination);
   masterGain.connect(convolver).connect(reverbGain).connect(audioCtx.destination);
 }
- 
-// simple synthetic impulse response for reverb (exponentially decaying noise)
+
+// 잔향을 위한 합성 임펄스 응답 (지수적으로 잦아드는 노이즈)
 function makeImpulse(seconds, decay) {
   const rate = audioCtx.sampleRate;
   const len = Math.floor(rate * seconds);
@@ -421,42 +411,34 @@ function makeImpulse(seconds, decay) {
   }
   return buf;
 }
- 
+
 function updateSound(dist, tremorVal) {
   const t = audioCtx.currentTime;
- 
-  // closeness: 1 at the (moving) center, 0 at the edge. BLOOM_POWER concentrates
-  // the opening into the last stretch, so the flowering feels like an arrival.
+
+  // 가까움: 점에서 1, 가장자리에서 0. BLOOM_POWER로 밝아짐을 마지막 접근에 모은다.
   const closeness = Math.pow(1 - dist, BLOOM_POWER);
- 
-  // presence swells toward center
+
+  // 점에 가까울수록 존재감이 차오름
   masterGain.gain.setTargetAtTime(0.16 + closeness * 0.16, t, 0.08);
- 
-  // THE BLOOM: cutoff sweeps dark → bright, exponentially, so the upper inharmonic
-  // partials shimmer through as the hand nears center.
+
+  // 피어남: 필터가 어둠→빛으로 열리며 배음이 드러난다
   const cutoff = FILTER_DARK * Math.pow(FILTER_BRIGHT / FILTER_DARK, closeness);
   toneFilter.frequency.setTargetAtTime(cutoff, t, 0.09);
   toneFilter.Q.setTargetAtTime(1.0 + closeness * 2.0, t, 0.12);
- 
-  // THE HALO: the upper-octave bell stays silent until the hand is almost exactly
-  // at center (HALO_POWER makes it appear only in the final stretch), then blooms
-  // in — the crest of arriving, bright and radiant above the bowl.
+
+  // 후광: 점에 거의 닿았을 때만 열리는 옥타브 위 맑은 종
   const halo = Math.pow(1 - dist, HALO_POWER);
   haloBus.gain.setTargetAtTime(halo * 0.5, t, 0.12);
- 
-  // THE GLINT: only in the last sliver of distance, where fingertip and moving
-  // origin nearly coincide, a very high sine flares — a thin glint of light. fast
-  // attack, fast release, so as the origin slips away it flickers and vanishes: the
-  // instant of coincidence exists but can never be held.
+
+  // 섬광: 손끝과 점이 거의 겹치는 순간에만 반짝. 점이 미끄러지면 곧 사라진다.
   if (dist < GLINT_ZONE) {
-    const g = (1 - dist / GLINT_ZONE); // 0 at the edge of the zone → 1 at exact coincidence
-    glintGain.gain.setTargetAtTime(g * g * GLINT_GAIN, t, 0.015); // sharp bloom
+    const g = (1 - dist / GLINT_ZONE);
+    glintGain.gain.setTargetAtTime(g * g * GLINT_GAIN, t, 0.015);
   } else {
-    glintGain.gain.setTargetAtTime(0, t, 0.05); // quick fade as it slips away
+    glintGain.gain.setTargetAtTime(0, t, 0.05);
   }
- 
-  // tremor → pitch wobble across all partials. near center, as the bowl opens and
-  // brightens, this is the last thing left moving: the body that cannot hold still.
+
+  // 떨림 → 음정 흔들림. 종이 열려 밝아질 때 마지막까지 움직이는 유일한 것: 멈출 수 없는 몸.
   const cents = Math.min(1, tremorVal * 40) * TREMOR_PITCH_DEPTH;
   const mult = Math.pow(2, cents / 1200);
   bellOscs.forEach((o, i) => {
@@ -467,8 +449,8 @@ function updateSound(dist, tremorVal) {
   });
   glintOsc.frequency.setTargetAtTime(CENTER_FREQ * GLINT_RATIO * mult, t, 0.03);
 }
- 
-// ---------- hands ----------
+
+// ---------- 손 추적 ----------
 async function setupHands() {
   const vision = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
@@ -487,7 +469,7 @@ async function setupHands() {
     });
   }
 }
- 
+
 async function startCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -500,7 +482,7 @@ async function startCamera() {
   });
   await video.play();
 }
- 
+
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = window.innerWidth, h = window.innerHeight;
@@ -512,14 +494,14 @@ function resize() {
 }
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", () => setTimeout(resize, 200));
- 
-// ---------- loop ----------
+
+// ---------- 매 프레임 ----------
 let lastVideoTime = -1, lastResult = null;
 let lastX = null, lastY = null, tremor = 0;
- 
+
 function loop() {
   if (!running) return;
- 
+
   let result = lastResult;
   if (video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime) {
     lastVideoTime = video.currentTime;
@@ -529,37 +511,36 @@ function loop() {
     } catch (e) { result = lastResult; }
   }
   if (!result) { requestAnimationFrame(loop); return; }
- 
+
   const W = window.innerWidth, H = window.innerHeight;
   ctx.clearRect(0, 0, W, H);
- 
-  // the origin re-forms itself every frame — never the same point twice
+
+  // 점은 매 프레임 다시 놓인다
   updateOrigin();
   const cx = originX * W, cy = originY * H;
- 
+
   if (result.landmarks && result.landmarks.length > 0) {
-    const tip = result.landmarks[0][8]; // index fingertip
-    const nx = 1 - tip.x;               // mirror to match the flipped video
+    const tip = result.landmarks[0][8]; // 검지 끝
+    const nx = 1 - tip.x;               // 반전된 영상에 맞춰 x 뒤집기
     const ny = tip.y;
     const px = nx * W, py = ny * H;
- 
-    // distance from the LIVING origin
+
+    // 살아 있는 점으로부터의 거리
     const dx = nx - originX, dy = ny - originY;
     const dist = Math.min(1, Math.hypot(dx, dy) * 2);
- 
-    // tremor = frame-to-frame motion of the fingertip
+
+    // 떨림 = 검지 끝의 프레임 간 움직임
     if (lastX !== null) {
       const v = Math.hypot(nx - lastX, ny - lastY);
       tremor = tremor * 0.7 + v * 0.3;
     }
     lastX = nx; lastY = ny;
- 
+
     updateSound(dist, tremor);
     drawOrigin(cx, cy);
     drawHand(px, py, dist);
     statusEl.textContent = "";
-    // both the hand AND the origin are shown at 5 decimals: the point you aim at
-    // is itself being re-measured every frame, never the same value twice.
+    // 손끝도 점도 매 프레임 다시 측정된다 — 같은 값을 두 번 갖지 않는다
     hud.textContent =
       `hand    ${nx.toFixed(5)}, ${ny.toFixed(5)}\n` +
       `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}\n` +
@@ -570,17 +551,15 @@ function loop() {
     tremor = 0;
     drawOrigin(cx, cy);
     statusEl.textContent = "손가락이 점에 정확히 닿으면 종소리가 울립니다";
-    // even with no hand, the origin keeps re-forming
     hud.textContent = `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}`;
   }
- 
+
   requestAnimationFrame(loop);
 }
- 
-// ---------- drawing ----------
+
+// ---------- 그리기 ----------
 function drawOrigin(cx, cy) {
-  // the crosshair sits at the living origin, so it is never perfectly still —
-  // the target you aim at was never a fixed place.
+  // 십자선은 살아 있는 점 위에 놓여, 완전히 멈춰 있지 않다
   ctx.strokeStyle = "rgba(220,220,220,0.4)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -594,34 +573,32 @@ function drawOrigin(cx, cy) {
   ctx.fillStyle = "rgba(240,240,240,0.55)";
   ctx.fill();
 }
- 
+
 function drawHand(px, py, dist) {
   const closeness = 1 - dist;
-  // fingertip marker: brightens and tightens as it nears the (moving) center,
-  // but the center keeps slipping, so it never quite settles.
   const r = 10 - closeness * 5;
   ctx.beginPath();
   ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = `rgba(245,245,245,${0.4 + closeness * 0.6})`;
   ctx.fill();
 }
- 
-// ---------- info overlay ----------
+
+// ---------- 작품 설명 오버레이 ----------
 function toggleInfo(open) {
   info.classList.toggle("show", open);
   infoBtn.classList.toggle("open", open);
 }
 infoBtn.addEventListener("click", () => toggleInfo(!info.classList.contains("show")));
 infoClose.addEventListener("click", () => toggleInfo(false));
- 
-// ---------- start ----------
+
+// ---------- 시작 ----------
 startBtn.addEventListener("click", async () => {
   startBtn.disabled = true;
   startBtn.textContent = "불러오는 중…";
   try {
     resize();
     setupAudio();
-    // iOS unlock: silent buffer inside the user gesture
+    // iOS 오디오 잠금 해제: 사용자 제스처 안에서 무음 버퍼 재생
     const buf = audioCtx.createBuffer(1, 1, 22050);
     const src = audioCtx.createBufferSource();
     src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
@@ -647,5 +624,3 @@ startBtn.addEventListener("click", async () => {
 </script>
 </body>
 </html>
-
-
