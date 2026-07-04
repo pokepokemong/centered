@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Centers, Again</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --fg: #e8e8e8;
+    --dim: #666;
+    --accent: #f5f5f5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* use dynamic viewport units on mobile so the browser UI bar doesn't clip the stage */
+  #stage { height: 100vh; height: 100dvh; }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* video is mirrored so the user's movement feels natural */
+  #video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    filter: grayscale(1) contrast(1.05) brightness(0.55);
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  /* ---- intro / permission screen ---- */
+  #intro {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: calc(2rem + env(safe-area-inset-top)) 1.6rem calc(2rem + env(safe-area-inset-bottom));
+    z-index: 10;
+    transition: opacity 0.8s ease;
+  }
+  #intro h1 {
+    font-weight: 300;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    letter-spacing: 0.04em;
+    margin-bottom: 1.2rem;
+  }
+  #intro h1 em { font-style: italic; color: var(--dim); }
+  #intro p {
+    max-width: 30rem;
+    line-height: 1.7;
+    color: var(--dim);
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+  }
+  #start {
+    margin-top: 2.2rem;
+    background: none;
+    border: 1px solid var(--dim);
+    color: var(--fg);
+    padding: 1rem 2.6rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.25s ease;
+    touch-action: manipulation;
+  }
+  #start:active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  @media (hover: hover) {
+    #start:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  }
+  .fade-out { opacity: 0; pointer-events: none; }
+
+  /* ---- HUD ---- */
+  #hud {
+    position: absolute;
+    left: calc(1.2rem + env(safe-area-inset-left));
+    bottom: calc(1.4rem + env(safe-area-inset-bottom));
+    font-size: 0.72rem;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    white-space: pre;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  #hud.show { opacity: 1; }
+  #status {
+    position: absolute;
+    top: calc(1.2rem + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 90vw;
+    font-size: 0.8rem;
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    z-index: 5;
+    text-align: center;
+  }
+  #toggle {
+    position: absolute;
+    right: calc(1.2rem + env(safe-area-inset-right));
+    bottom: calc(1.4rem + env(safe-area-inset-bottom));
+    font-size: 0.72rem;
+    color: var(--dim);
+    background: rgba(10,10,10,0.4);
+    border: 1px solid #2a2a2a;
+    padding: 0.6rem 1rem;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    z-index: 6;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  #toggle:hover { color: var(--fg); border-color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" playsinline muted></video>
+  <canvas id="overlay"></canvas>
+
+  <div id="status"></div>
+  <div id="hud"></div>
+  <button id="toggle">데이터 표시</button>
+
+  <div id="intro">
+    <h1>Centers, <em>Again</em></h1>
+    <p>손을 들어 화면 중앙 — 렌즈의 원점을 겨누세요.</p>
+    <p>중심에 가까울수록 소리는 하나의 순음으로 맑아지고,</p>
+    <p>멈출 수 없는 떨림이 그 위로 새어 나옵니다.</p>
+    <p style="margin-top:1.4rem; color:#444; font-size:0.8rem;">웹캠 영상은 이 기기에서만 처리되며 어디에도 저장되지 않습니다.</p>
+    <button id="start">시작하기</button>
+  </div>
+</div>
+
+<script type="module">
+import { HandLandmarker, FilesetResolver }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+const video   = document.getElementById("video");
+const canvas  = document.getElementById("overlay");
+const ctx     = canvas.getContext("2d");
+const intro   = document.getElementById("intro");
+const startBtn= document.getElementById("start");
+const statusEl= document.getElementById("status");
+const hud     = document.getElementById("hud");
+const toggle  = document.getElementById("toggle");
+
+// ---------- config ----------
+const CENTER_FREQ = 220;      // the single origin tone (Hz) — one center for everyone
+const MAX_HARMONIC_GAIN = 0.5;
+const TREMOR_PITCH_DEPTH = 90; // cents of pitch wobble at full tremor
+// ----------------------------
+
+let landmarker = null;
+let audioCtx = null;
+let running = false;
+let showData = false;
+
+// audio nodes
+let osc, harmOsc, harmGain, masterGain, pitchParam;
+
+function setupAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // fundamental sine — the pure tone
+  osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = CENTER_FREQ;
+
+  // a detuned harmonic layer that grows with distance (impurity when off-center)
+  harmOsc = audioCtx.createOscillator();
+  harmOsc.type = "triangle";
+  harmOsc.frequency.value = CENTER_FREQ * 2;
+
+  harmGain = audioCtx.createGain();
+  harmGain.gain.value = 0;
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0; // silent until a hand appears
+
+  osc.connect(masterGain);
+  harmOsc.connect(harmGain).connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  osc.start();
+  harmOsc.start();
+  pitchParam = osc.frequency;
+}
+
+async function setupHands() {
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  const modelPath =
+    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+  try {
+    landmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
+      runningMode: "VIDEO",
+      numHands: 1
+    });
+  } catch (e) {
+    // some mobile browsers lack GPU delegate support — fall back to CPU
+    console.warn("GPU delegate failed, falling back to CPU", e);
+    landmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
+      runningMode: "VIDEO",
+      numHands: 1
+    });
+  }
+}
+
+async function startCamera() {
+  // ideal resolution; browser will pick closest. Front camera by default.
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: "user",
+      width:  { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: false
+  });
+  video.srcObject = stream;
+  // wait until dimensions are known before playing (iOS Safari)
+  await new Promise((res) => {
+    if (video.readyState >= 1) return res();
+    video.onloadedmetadata = () => res();
+  });
+  await video.play();
+}
+
+function resize() {
+  // account for device pixel ratio so lines stay crisp on retina/mobile
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width  = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+window.addEventListener("orientationchange", () => setTimeout(resize, 200));
+
+// smoothing state for tremor
+let lastX = null, lastY = null;
+let tremor = 0;
+
+let lastVideoTime = -1;
+let lastResult = null;
+
+function loop() {
+  if (!running) return;
+
+  // only run detection on a fresh video frame with valid dimensions
+  let result = lastResult;
+  if (video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    try {
+      result = landmarker.detectForVideo(video, performance.now());
+      lastResult = result;
+    } catch (e) {
+      result = lastResult;
+    }
+  }
+  if (!result) { requestAnimationFrame(loop); return; }
+
+  // logical (CSS pixel) size — ctx is already scaled by DPR
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H / 2;
+
+  // draw the origin (hidden center of the gaze)
+  drawOrigin(cx, cy);
+
+  if (result.landmarks && result.landmarks.length > 0) {
+    // index fingertip = landmark 8
+    const tip = result.landmarks[0][8];
+    // video is mirrored on screen, so mirror x to match what the user sees
+    const nx = 1 - tip.x;
+    const ny = tip.y;
+    const px = nx * W;
+    const py = ny * H;
+
+    // distance from center, normalized 0..~1
+    const dx = nx - 0.5;
+    const dy = ny - 0.5;
+    const dist = Math.min(1, Math.hypot(dx, dy) * 2);
+
+    // tremor = frame-to-frame movement of the fingertip
+    if (lastX !== null) {
+      const v = Math.hypot(nx - lastX, ny - lastY);
+      // short smoothing window; keep the jitter alive
+      tremor = tremor * 0.7 + v * 0.3;
+    }
+    lastX = nx; lastY = ny;
+
+    updateSound(dist, tremor);
+    drawHand(px, py, cx, cy, dist);
+    updateHud(nx, ny, tip.z, dist, tremor);
+    statusEl.textContent = "";
+  } else {
+    // no hand: fade to silence
+    if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
+    lastX = lastY = null;
+    tremor = 0;
+    statusEl.textContent = "손을 들어 중심을 겨누세요";
+    if (showData) hud.textContent = "";
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function updateSound(dist, tremorVal) {
+  const t = audioCtx.currentTime;
+  // hand present -> audible
+  masterGain.gain.setTargetAtTime(0.22, t, 0.05);
+
+  // distance -> harmonic impurity (0 at center = pure sine)
+  const harm = dist * MAX_HARMONIC_GAIN;
+  harmGain.gain.setTargetAtTime(harm, t, 0.05);
+
+  // tremor -> pitch wobble in cents. Purer tone at center makes it stand out.
+  const cents = Math.min(1, tremorVal * 40) * TREMOR_PITCH_DEPTH;
+  const wobble = CENTER_FREQ * Math.pow(2, cents / 1200);
+  pitchParam.setTargetAtTime(wobble, t, 0.02);
+  // keep harmonic tracking the fundamental (2x)
+  harmOsc.frequency.setTargetAtTime(wobble * 2, t, 0.02);
+}
+
+// ---------- drawing ----------
+function drawOrigin(cx, cy) {
+  const pulse = 6;
+  ctx.strokeStyle = "rgba(200,200,200,0.35)";
+  ctx.lineWidth = 1;
+  // crosshair
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 4, cy);
+  ctx.moveTo(cx + 4, cy); ctx.lineTo(cx + 14, cy);
+  ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 4);
+  ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy + 14);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(230,230,230,0.55)";
+  ctx.fill();
+}
+
+function drawHand(px, py, cx, cy, dist) {
+  // line from fingertip toward origin — the act of aiming
+  const closeness = 1 - dist;
+  ctx.strokeStyle = `rgba(230,230,230,${0.15 + closeness * 0.5})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(cx, cy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fingertip marker — converges (shrinks, brightens) near center
+  const r = 10 - closeness * 5;
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(245,245,245,${0.4 + closeness * 0.6})`;
+  ctx.fill();
+}
+
+function updateHud(nx, ny, z, dist, tremorVal) {
+  if (!showData) return;
+  hud.textContent =
+    `X ${nx.toFixed(3)}   Y ${ny.toFixed(3)}   Z ${z.toFixed(3)}\n` +
+    `중심거리 ${dist.toFixed(3)}   떨림 ${(tremorVal*1000).toFixed(1)}`;
+}
+
+// ---------- controls ----------
+toggle.addEventListener("click", () => {
+  showData = !showData;
+  hud.classList.toggle("show", showData);
+  toggle.textContent = showData ? "데이터 숨기기" : "데이터 표시";
+  if (!showData) hud.textContent = "";
+});
+
+startBtn.addEventListener("click", async () => {
+  startBtn.disabled = true;
+  startBtn.textContent = "불러오는 중…";
+  try {
+    resize();
+    setupAudio();
+    // iOS unlock: play a silent buffer inside the user gesture
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    await setupHands();
+    await startCamera();
+    running = true;
+    intro.classList.add("fade-out");
+    statusEl.textContent = "손을 들어 중심을 겨누세요";
+    loop();
+  } catch (err) {
+    console.error(err);
+    startBtn.disabled = false;
+    startBtn.textContent = "다시 시도";
+    let msg = "오류가 발생했습니다.";
+    if (err && err.name === "NotAllowedError")
+      msg = "카메라 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.";
+    else if (err && err.name === "NotFoundError")
+      msg = "웹캠을 찾을 수 없습니다.";
+    intro.querySelectorAll("p")[0].textContent = msg;
+  }
+});
+</script>
+</body>
+</html>
