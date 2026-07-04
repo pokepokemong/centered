@@ -121,23 +121,6 @@
     text-align: center;
   }
 
-  /* coordinate readout — the position, re-measured every frame, never still */
-  #hud {
-    position: absolute;
-    left: calc(1.2rem + env(safe-area-inset-left));
-    bottom: calc(1.2rem + env(safe-area-inset-bottom));
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.78rem;
-    color: var(--dim);
-    letter-spacing: 0.02em;
-    line-height: 1.6;
-    font-variant-numeric: tabular-nums;
-    white-space: pre;
-    z-index: 5;
-    opacity: 0.8;
-    pointer-events: none;
-  }
-
   /* ---- info button + panel (artwork statement) ---- */
   #infoBtn {
     position: absolute;
@@ -226,7 +209,6 @@
   <canvas id="overlay"></canvas>
 
   <div id="status"></div>
-  <div id="hud"></div>
   <button id="infoBtn" aria-label="작품 설명">i</button>
 
   <div id="intro">
@@ -274,7 +256,6 @@ const ctx      = canvas.getContext("2d");
 const intro    = document.getElementById("intro");
 const startBtn = document.getElementById("start");
 const statusEl = document.getElementById("status");
-const hud      = document.getElementById("hud");
 const infoBtn  = document.getElementById("infoBtn");
 const info     = document.getElementById("info");
 const infoClose= document.getElementById("infoClose");
@@ -297,7 +278,7 @@ const GLINT_GAIN = 0.14;         // 세기 (슬쩍)
 // 손끝과 점이 거의 완벽히 겹쳐야(CONTACT_RADIUS 이내) 완성된 종소리가 울린다.
 // 코드는 정직하다: 닿으면 정말 울린다. 그러나 손의 떨림과 추적 오차 때문에 그 완벽한
 // 겹침은 현실에서 거의 일어나지 않는다 — 못 닿음은 장치가 아니라 행위의 조건이다.
-const CONTACT_RADIUS = 0.008;   // 이 거리 안에 들어야 '닿음'으로 판정 (정규화 좌표, 매우 작음)
+const CONTACT_RADIUS = 0.0015;  // 이 거리 안에 들어야 '닿음'으로 판정 (지극히 작음 — 거의 불가능)
 // ----------------------------
 
 let landmarker = null;
@@ -571,18 +552,12 @@ function loop() {
     drawOrigin(cx, cy);
     drawHand(px, py, dist);
     statusEl.textContent = "";
-    // 손끝과 점의 좌표, 그리고 거리. dist가 CONTACT_RADIUS 이내면 종이 울린다.
-    hud.textContent =
-      `hand    ${nx.toFixed(5)}, ${ny.toFixed(5)}\n` +
-      `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}\n` +
-      `dist    ${dist.toFixed(5)}`;
   } else {
     if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
     lastX = lastY = null;
     tremor = 0;
     drawOrigin(cx, cy);
     statusEl.textContent = "손가락이 점에 정확히 닿으면 종소리가 울립니다";
-    hud.textContent = `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}`;
   }
 
   requestAnimationFrame(loop);
@@ -591,7 +566,6 @@ function loop() {
 // ---------- 그리기 ----------
 function drawOrigin(cx, cy) {
   // 십자선은 화면 정중앙에 고정. 손끝이 여기 정확히 닿으면 종이 울린다 —
-  // 다만 그 닿음의 기준이 지극히 엄격하다.
   ctx.strokeStyle = "rgba(220,220,220,0.4)";
   ctx.lineWidth = 1;
   ctx.beginPath();
