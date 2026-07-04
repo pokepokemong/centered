@@ -1,17 +1,16 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Centers, Again</title>
+<title>Re: Centers</title>
 <style>
   :root {
     --bg: #0a0a0a;
     --fg: #e8e8e8;
     --dim: #666;
-    --accent: #f5f5f5;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -25,11 +24,10 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  /* use dynamic viewport units on mobile so the browser UI bar doesn't clip the stage */
-  #stage { height: 100vh; height: 100dvh; }
   #stage {
     position: fixed;
     inset: 0;
+    height: 100vh; height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -42,7 +40,7 @@
     height: 100%;
     object-fit: cover;
     transform: scaleX(-1);
-    filter: grayscale(1) contrast(1.05) brightness(0.55);
+    filter: grayscale(1) contrast(1.05) brightness(0.5);
   }
   #overlay {
     position: absolute;
@@ -64,22 +62,34 @@
     z-index: 10;
     transition: opacity 0.8s ease;
   }
+  #intro .introInner {
+    max-width: 30rem;
+    width: 100%;
+  }
   #intro h1 {
     font-weight: 300;
-    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-size: clamp(2rem, 6vw, 3rem);
     letter-spacing: 0.04em;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.6rem;
   }
   #intro h1 em { font-style: italic; color: var(--dim); }
-  #intro p {
-    max-width: 30rem;
-    line-height: 1.7;
+  #intro .cue {
     color: var(--dim);
-    font-size: 0.95rem;
-    margin-bottom: 0.6rem;
+    font-size: 0.98rem;
+    letter-spacing: 0.03em;
+    line-height: 1.7;
+    margin-bottom: 0;
   }
+  #intro .privacy {
+    color: #444;
+    font-size: 0.78rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+    text-align: center;
+  }
+  #startWrap { text-align: center; }
   #start {
-    margin-top: 2.2rem;
+    margin-top: 2rem;
     background: none;
     border: 1px solid var(--dim);
     color: var(--fg);
@@ -95,8 +105,8 @@
   @media (hover: hover) {
     #start:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   }
-  .fade-out { opacity: 0; pointer-events: none; }
-
+  .fade-out { opacity: 0 !important; pointer-events: none; }
+ 
   #status {
     position: absolute;
     top: calc(1.2rem + env(safe-area-inset-top));
@@ -110,71 +120,195 @@
     z-index: 5;
     text-align: center;
   }
+ 
+  /* coordinate readout — the position, re-measured every frame, never still */
+  #hud {
+    position: absolute;
+    left: calc(1.2rem + env(safe-area-inset-left));
+    bottom: calc(1.2rem + env(safe-area-inset-bottom));
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.78rem;
+    color: var(--dim);
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+    white-space: pre;
+    z-index: 5;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+ 
+  /* ---- info button + panel (artwork statement) ---- */
+  #infoBtn {
+    position: absolute;
+    right: calc(1.1rem + env(safe-area-inset-right));
+    bottom: calc(1.2rem + env(safe-area-inset-bottom));
+    width: 2rem; height: 2rem;
+    border: 1px solid #333;
+    border-radius: 50%;
+    background: rgba(10,10,10,0.35);
+    color: var(--dim);
+    font-size: 0.9rem;
+    font-style: italic;
+    font-family: Georgia, "Times New Roman", serif;
+    cursor: pointer;
+    z-index: 6;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  #infoBtn:active, #infoBtn.open { color: var(--fg); border-color: var(--dim); }
+ 
+  #info {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,6,6,0.94);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(3rem + env(safe-area-inset-top)) 1.6rem calc(3rem + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+  #info.show { opacity: 1; pointer-events: auto; }
+  #info .inner {
+    max-width: 34rem;
+    color: #cfcfcf;
+  }
+  #info h2 {
+    font-weight: 300;
+    font-size: 1.5rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.4rem;
+  }
+  #info h2 em { font-style: italic; color: var(--dim); }
+  #info .medium {
+    color: var(--dim);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 1.8rem;
+  }
+  #info .sub {
+    color: var(--fg);
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 1.1rem;
+  }
+  #info p {
+    line-height: 1.85;
+    font-size: 0.92rem;
+    margin-bottom: 1.1rem;
+    word-break: keep-all;
+  }
+  #info .close {
+    margin-top: 1rem;
+    color: var(--dim);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    display: inline-block;
+    border-bottom: 1px solid #333;
+    padding-bottom: 2px;
+  }
 </style>
 </head>
 <body>
 <div id="stage">
   <video id="video" playsinline muted></video>
   <canvas id="overlay"></canvas>
-
+ 
   <div id="status"></div>
-
+  <div id="hud"></div>
+  <button id="infoBtn" aria-label="작품 설명">i</button>
+ 
   <div id="intro">
-    <h1>Centers, <em>Again</em></h1>
-    <p>손을 들어 화면 중앙 — 렌즈의 원점을 겨누세요.</p>
-    <p>중심에 가까울수록 소리는 하나의 순음으로 맑아지고,</p>
-    <p>멈출 수 없는 떨림이 그 위로 새어 나옵니다.</p>
-    <p style="margin-top:1.4rem; color:#444; font-size:0.8rem;">웹캠 영상은 이 기기에서만 처리되며 어디에도 저장되지 않습니다.</p>
-    <button id="start">시작하기</button>
+    <div class="introInner">
+      <h1><em>Re:</em> Centers</h1>
+      <p class="cue">손가락이 점에 정확히 닿으면 종소리가 울립니다.</p>
+      <div id="startWrap">
+        <button id="start">시작하기</button>
+      </div>
+      <p class="privacy">웹캠 영상은 이 기기에서만 처리되며 어디에도 저장되지 않습니다.</p>
+    </div>
+  </div>
+ 
+  <!-- artwork statement overlay (re-openable after start via the i button) -->
+  <div id="info">
+    <div class="inner">
+      <h2><em>Re:</em> Centers</h2>
+      <div class="medium">단채널 인터랙티브 사운드 설치</div>
+ 
+      <div class="sub">겨눔 (Aiming)</div>
+      <p>본 작품은 비토 아콘치(Vito Acconci)의 영상 작업 〈Centers〉(1971)가 제기한 ‘중심을 겨누는 신체’의 문제를 동시대의 인터랙티브 환경으로 확장한다. 아콘치가 비디오의 폐쇄회로 안에서 화면의 중심을 향해 신체와 시선을 정렬했다면, 이 작업은 그 중심을 끊임없이 움직이는 원점으로 전환한다.</p>
+      <p>관객이 허공의 한 점을 향해 손을 뻗을 때, 신체의 정렬과 그에 반응하는 소리는 분명한 물리적 사건으로 발생한다. 그러나 손끝이 향하는 원점은 결코 붙잡히지 않는다. ‘여기’라 불리는 그 지점은 선험적으로 존재하는 절대적 위치가 아니며, 겨누는 행위 속에서 매 순간 새롭게 구성되는 근사다.</p>
+      <p>따라서 지목과 대상 사이에 남는 어긋남은 겨눔이라는 행위에 내재한 조건이다. 신체는 끊임없이 위치를 조정하고 감각은 그 변화에 반응하지만, 원점은 하나의 고정된 실체로 머무르지 않는다. 주체와 대상은 서로를 향해 끊임없이 조정되는 관계 속에서 존재한다.</p>
+      <p>이 작품에서 겨눔은 영원한 근사라는 상태 자체다. 완전한 일치에 이르지 못한 채 미세한 차이를 지속하는 신체의 움직임은, 중심을 향한 실패를 드러내기보다 애초에 절대적 중심이 부재한다는 사실을 드러낸다. 관객이 향하는 것은 끝내 수렴하지 않는 관계 속에서도 계속해서 세계를 구성하는 신체와 감각의 운동이다.</p>
+ 
+      <span class="close" id="infoClose">닫기</span>
+    </div>
   </div>
 </div>
-
+ 
 <script type="module">
 import { HandLandmarker, FilesetResolver }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-
-const video   = document.getElementById("video");
-const canvas  = document.getElementById("overlay");
-const ctx     = canvas.getContext("2d");
-const intro   = document.getElementById("intro");
-const startBtn= document.getElementById("start");
-const statusEl= document.getElementById("status");
-
+ 
+const video    = document.getElementById("video");
+const canvas   = document.getElementById("overlay");
+const ctx      = canvas.getContext("2d");
+const intro    = document.getElementById("intro");
+const startBtn = document.getElementById("start");
+const statusEl = document.getElementById("status");
+const hud      = document.getElementById("hud");
+const infoBtn  = document.getElementById("infoBtn");
+const info     = document.getElementById("info");
+const infoClose= document.getElementById("infoClose");
+ 
 // ---------- config ----------
-const CENTER_FREQ = 220;        // the single origin tone (Hz) — one center for everyone
-const MAX_HARMONIC_GAIN = 0.35; // loudness of the "reference" tone that beats against the fundamental
-const TREMOR_PITCH_DEPTH = 90;  // cents of pitch wobble at full tremor
-const MAX_DETUNE_CENTS = 120;   // how far the reference tone drifts out of tune at the edge
-const CONVERGE_POWER = 3;       // >1 makes the "in tune" zone snap tighter near the very center
-
-// --- dwell: reaching the center is not an end but a beginning ---
-const DWELL_ZONE = 0.14;        // how close (dist) you must be for dwell to accumulate
-const DWELL_RISE = 0.35;        // how fast dwell fills per second while held at center
-const DWELL_FALL = 0.9;         // how fast dwell drains per second once you leave / tremble
-const TREMOR_PENALTY = 6.0;     // how strongly tremble eats into dwell accumulation
-
-// --- living origin: "here" is never a fixed fact, it is re-computed every frame ---
-// The point you aim at is itself in motion, so it can never be reached — not because
-// your hand shakes, but because the center was never still to begin with.
-const ORIGIN_DRIFT = 0.010;     // amplitude of the origin's wander (in normalized 0..1 units)
-const ORIGIN_SPEED = 0.7;       // how quickly the origin re-computes its position
-const ORIGIN_JITTER = 0.0016;   // per-frame micro-reconstruction — the last, irreducible gap
+// singing bowl / bell: inharmonic partials shimmering against each other. as the
+// hand nears the center they open and brighten — and in the final approach a clear
+// upper-octave bell blooms in, so arriving at center feels like cresting into light.
+const CENTER_FREQ = 196;          // base pitch (Hz) — a low, calm G
+// classic bell-like inharmonic ratios (hum, prime, tierce, quint, nominal, upper)
+const BELL_RATIOS = [1.0, 2.0, 2.4, 3.0, 4.5, 5.33];
+const FILTER_DARK = 220;          // cutoff far from center (Hz) — dark, muffled ring
+const FILTER_BRIGHT = 9000;       // cutoff at center (Hz) — wide open, radiant
+const BLOOM_POWER = 2.6;          // higher → the opening concentrates into the final approach
+const HALO_POWER = 5;             // even sharper: the upper-octave "halo" only in the last stretch
+const TREMOR_PITCH_DEPTH = 55;    // cents of pitch wobble carried by the hand's tremor
+ 
+// a single very high partial that flares ONLY when the fingertip nearly coincides
+// with the (moving) origin — a thin glint of light. because the origin keeps
+// slipping, this moment can never be held: it flickers and is gone.
+const GLINT_RATIO = 12;          // very high overtone (12× the base) — a bright sliver
+const GLINT_ZONE = 0.05;         // how close dist must be for the glint to appear
+const GLINT_GAIN = 0.14;         // peak loudness of the glint (kept slight, a whisper of light)
+ 
+// --- living origin: "here" is re-formed every frame, never a fixed point ---
+const ORIGIN_DRIFT  = 0.006;    // amplitude of the origin's slow wander (normalized units)
+const ORIGIN_SPEED  = 0.45;     // how quickly the origin re-forms its position
+const ORIGIN_JITTER = 0.0009;   // per-frame micro-reconstruction — the last irreducible gap
 // ----------------------------
-
+ 
 let landmarker = null;
 let audioCtx = null;
 let running = false;
-let dwell = 0;                  // 0..1 — the accumulated "staying", the subject of the piece
-let lastFrameTime = null;
-
-// living origin state — the smooth wander plus an irreducible per-frame jitter
-let originX = 0.5, originY = 0.5;      // current re-computed "here", in normalized coords
+ 
+// living origin state
+let originX = 0.5, originY = 0.5;
 let originPhaseA = Math.random() * 6.28, originPhaseB = Math.random() * 6.28;
-
-// The origin never rests. A slow drift (it re-forms its position continuously) plus a
-// per-frame jitter (each measurement returns a slightly different value) means the very
-// point you aim at is an approximation being rewritten, not a fact being found.
-function updateOrigin(nowSec) {
+ 
+// The origin never rests: a slow drift (it re-forms continuously) plus a per-frame
+// jitter (each moment returns a slightly different value). The point you aim at is
+// an approximation being rewritten, not a fact being found — so it cannot be reached,
+// no matter how steady the hand.
+function updateOrigin() {
   originPhaseA += ORIGIN_SPEED * 0.016;
   originPhaseB += ORIGIN_SPEED * 0.016 * 1.37; // incommensurate → never repeats cleanly
   const driftX = Math.sin(originPhaseA) * 0.6 + Math.sin(originPhaseB * 0.7) * 0.4;
@@ -184,68 +318,97 @@ function updateOrigin(nowSec) {
   originX = 0.5 + driftX * ORIGIN_DRIFT + jx;
   originY = 0.5 + driftY * ORIGIN_DRIFT + jy;
 }
-
-// audio nodes
-let osc, refOsc, refGain, masterGain, pitchParam, refDetune;
-let growGains = [], growOscs = [], reverbGain, dryGain;
-
+ 
+// ---------- audio ----------
+// A singing-bowl voice: inharmonic partials sustained together, run through a
+// low-pass that sweeps dark→bright, into a long reverb that gives the meditative
+// ring. Far from center: dark, muted. Near center: the upper partials shimmer
+// through and the tone opens — a bell blooming into light.
+let bellOscs = [], masterGain, toneFilter, reverbGain, dryGain;
+let haloOscs = [], haloBus;              // upper-octave bell that blooms only at the very center
+const HALO_RATIOS = [2.0, 3.0, 4.0, 6.0]; // pure (harmonic) octave partials → clear, radiant
+let glintOsc, glintGain;                 // a single very high partial — the fleeting glint of coincidence
+ 
 function setupAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  // fundamental sine — the pure tone
-  osc = audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = CENTER_FREQ;
-
-  // a SECOND sine at the same pitch — the "reference" you tune against.
-  // Off-center it is detuned and beats against the fundamental (wah-wah).
-  // At the center the detune goes to 0 and the two lock into one clean tone.
-  refOsc = audioCtx.createOscillator();
-  refOsc.type = "sine";
-  refOsc.frequency.value = CENTER_FREQ;
-
-  refGain = audioCtx.createGain();
-  refGain.gain.value = 0;
-
+ 
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0; // silent until a hand appears
-
-  // reverb — a space that opens as dwell grows
-  const convolver = audioCtx.createConvolver();
-  convolver.buffer = makeImpulse(2.6, 2.4);
-  reverbGain = audioCtx.createGain();
-  reverbGain.gain.value = 0;      // closed until dwell opens it
-  dryGain = audioCtx.createGain();
-  dryGain.gain.value = 1;
-
-  masterGain.connect(dryGain).connect(audioCtx.destination);
-  masterGain.connect(convolver).connect(reverbGain).connect(audioCtx.destination);
-
-  osc.connect(masterGain);
-  refOsc.connect(refGain).connect(masterGain);
-
-  // growth partials — harmonics that are born one by one as you stay.
-  // Reaching the center opens a chord that wasn't there before.
-  const ratios = [1.5, 2.0, 3.0]; // fifth, octave, octave+fifth
-  ratios.forEach((r) => {
+ 
+  // low-pass that sweeps dark → bright (the bloom)
+  toneFilter = audioCtx.createBiquadFilter();
+  toneFilter.type = "lowpass";
+  toneFilter.frequency.value = FILTER_DARK;
+  toneFilter.Q.value = 1.0;
+ 
+  // inharmonic partials — the metallic, bell-like body
+  BELL_RATIOS.forEach((ratio, i) => {
     const o = audioCtx.createOscillator();
     o.type = "sine";
-    o.frequency.value = CENTER_FREQ * r;
+    o.frequency.value = CENTER_FREQ * ratio;
+ 
+    // a slow, tiny amplitude tremor per partial, each at a different rate, so the
+    // partials beat gently against one another — the living shimmer of a bowl that
+    // never fully settles.
+    const lfo = audioCtx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.15 + i * 0.07; // slightly different per partial
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 0.12;
+ 
     const g = audioCtx.createGain();
-    g.gain.value = 0;
-    o.connect(g).connect(masterGain);
+    g.gain.value = 0.5 / (i + 1.5); // higher partials quieter → warm, not harsh
+    lfo.connect(lfoGain).connect(g.gain);
+ 
+    o.connect(g).connect(toneFilter);
     o.start();
-    growOscs.push(o);
-    growGains.push(g);
+    lfo.start();
+    bellOscs.push(o);
   });
-
-  osc.start();
-  refOsc.start();
-  pitchParam = osc.frequency;
-  refDetune = refOsc.detune; // in cents
+ 
+  // HALO: a clear, high, purely-harmonic bell that stays silent until the hand is
+  // almost exactly at center, then blooms in — the sense of cresting into light,
+  // of arriving. it bypasses the dark filter so it rings out bright and open.
+  haloBus = audioCtx.createGain();
+  haloBus.gain.value = 0; // opened only near the very center
+  HALO_RATIOS.forEach((ratio, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = CENTER_FREQ * 2 * ratio; // an octave up from the bowl
+    const g = audioCtx.createGain();
+    g.gain.value = 0.4 / (i + 1.5);
+    o.connect(g).connect(haloBus);
+    o.start();
+    haloOscs.push(o);
+  });
+ 
+  // GLINT: one very high sine, silent almost always, flaring only in the instant
+  // the fingertip nearly coincides with the moving origin. bypasses the filter so
+  // it cuts through as a thin sliver of light — then the origin slips and it's gone.
+  glintOsc = audioCtx.createOscillator();
+  glintOsc.type = "sine";
+  glintOsc.frequency.value = CENTER_FREQ * GLINT_RATIO;
+  glintGain = audioCtx.createGain();
+  glintGain.gain.value = 0;
+  glintOsc.connect(glintGain);
+  glintOsc.start();
+ 
+  // reverb — a long tail for the meditative ring / lingering resonance
+  const convolver = audioCtx.createConvolver();
+  convolver.buffer = makeImpulse(4.5, 3.0);
+  reverbGain = audioCtx.createGain();
+  reverbGain.gain.value = 0.9;
+  dryGain = audioCtx.createGain();
+  dryGain.gain.value = 0.7;
+ 
+  toneFilter.connect(masterGain);
+  haloBus.connect(masterGain);           // halo joins the mix, but bypasses the dark low-pass
+  glintGain.connect(masterGain);         // glint too — a bright sliver above everything
+  masterGain.connect(dryGain).connect(audioCtx.destination);
+  masterGain.connect(convolver).connect(reverbGain).connect(audioCtx.destination);
 }
-
-// simple decaying-noise impulse response for the convolver
+ 
+// simple synthetic impulse response for reverb (exponentially decaying noise)
 function makeImpulse(seconds, decay) {
   const rate = audioCtx.sampleRate;
   const len = Math.floor(rate * seconds);
@@ -258,7 +421,54 @@ function makeImpulse(seconds, decay) {
   }
   return buf;
 }
-
+ 
+function updateSound(dist, tremorVal) {
+  const t = audioCtx.currentTime;
+ 
+  // closeness: 1 at the (moving) center, 0 at the edge. BLOOM_POWER concentrates
+  // the opening into the last stretch, so the flowering feels like an arrival.
+  const closeness = Math.pow(1 - dist, BLOOM_POWER);
+ 
+  // presence swells toward center
+  masterGain.gain.setTargetAtTime(0.16 + closeness * 0.16, t, 0.08);
+ 
+  // THE BLOOM: cutoff sweeps dark → bright, exponentially, so the upper inharmonic
+  // partials shimmer through as the hand nears center.
+  const cutoff = FILTER_DARK * Math.pow(FILTER_BRIGHT / FILTER_DARK, closeness);
+  toneFilter.frequency.setTargetAtTime(cutoff, t, 0.09);
+  toneFilter.Q.setTargetAtTime(1.0 + closeness * 2.0, t, 0.12);
+ 
+  // THE HALO: the upper-octave bell stays silent until the hand is almost exactly
+  // at center (HALO_POWER makes it appear only in the final stretch), then blooms
+  // in — the crest of arriving, bright and radiant above the bowl.
+  const halo = Math.pow(1 - dist, HALO_POWER);
+  haloBus.gain.setTargetAtTime(halo * 0.5, t, 0.12);
+ 
+  // THE GLINT: only in the last sliver of distance, where fingertip and moving
+  // origin nearly coincide, a very high sine flares — a thin glint of light. fast
+  // attack, fast release, so as the origin slips away it flickers and vanishes: the
+  // instant of coincidence exists but can never be held.
+  if (dist < GLINT_ZONE) {
+    const g = (1 - dist / GLINT_ZONE); // 0 at the edge of the zone → 1 at exact coincidence
+    glintGain.gain.setTargetAtTime(g * g * GLINT_GAIN, t, 0.015); // sharp bloom
+  } else {
+    glintGain.gain.setTargetAtTime(0, t, 0.05); // quick fade as it slips away
+  }
+ 
+  // tremor → pitch wobble across all partials. near center, as the bowl opens and
+  // brightens, this is the last thing left moving: the body that cannot hold still.
+  const cents = Math.min(1, tremorVal * 40) * TREMOR_PITCH_DEPTH;
+  const mult = Math.pow(2, cents / 1200);
+  bellOscs.forEach((o, i) => {
+    o.frequency.setTargetAtTime(CENTER_FREQ * BELL_RATIOS[i] * mult, t, 0.03);
+  });
+  haloOscs.forEach((o, i) => {
+    o.frequency.setTargetAtTime(CENTER_FREQ * 2 * HALO_RATIOS[i] * mult, t, 0.03);
+  });
+  glintOsc.frequency.setTargetAtTime(CENTER_FREQ * GLINT_RATIO * mult, t, 0.03);
+}
+ 
+// ---------- hands ----------
 async function setupHands() {
   const vision = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
@@ -268,261 +478,150 @@ async function setupHands() {
   try {
     landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
-      runningMode: "VIDEO",
-      numHands: 1
+      runningMode: "VIDEO", numHands: 1
     });
   } catch (e) {
-    // some mobile browsers lack GPU delegate support — fall back to CPU
-    console.warn("GPU delegate failed, falling back to CPU", e);
     landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
-      runningMode: "VIDEO",
-      numHands: 1
+      runningMode: "VIDEO", numHands: 1
     });
   }
 }
-
+ 
 async function startCamera() {
-  // ideal resolution; browser will pick closest. Front camera by default.
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: "user",
-      width:  { ideal: 1280 },
-      height: { ideal: 720 }
-    },
+    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
     audio: false
   });
   video.srcObject = stream;
-  // wait until dimensions are known before playing (iOS Safari)
   await new Promise((res) => {
     if (video.readyState >= 1) return res();
     video.onloadedmetadata = () => res();
   });
   await video.play();
 }
-
+ 
 function resize() {
-  // account for device pixel ratio so lines stay crisp on retina/mobile
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  canvas.width  = Math.round(w * dpr);
+  const w = window.innerWidth, h = window.innerHeight;
+  canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  canvas.style.width  = w + "px";
+  canvas.style.width = w + "px";
   canvas.style.height = h + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", () => setTimeout(resize, 200));
-
-// smoothing state for tremor
-let lastX = null, lastY = null;
-let tremor = 0;
-
-let lastVideoTime = -1;
-let lastResult = null;
-
+ 
+// ---------- loop ----------
+let lastVideoTime = -1, lastResult = null;
+let lastX = null, lastY = null, tremor = 0;
+ 
 function loop() {
   if (!running) return;
-
-  // only run detection on a fresh video frame with valid dimensions
+ 
   let result = lastResult;
   if (video.readyState >= 2 && video.videoWidth > 0 && video.currentTime !== lastVideoTime) {
     lastVideoTime = video.currentTime;
     try {
       result = landmarker.detectForVideo(video, performance.now());
       lastResult = result;
-    } catch (e) {
-      result = lastResult;
-    }
+    } catch (e) { result = lastResult; }
   }
   if (!result) { requestAnimationFrame(loop); return; }
-
-  // logical (CSS pixel) size — ctx is already scaled by DPR
-  const W = window.innerWidth;
-  const H = window.innerHeight;
+ 
+  const W = window.innerWidth, H = window.innerHeight;
   ctx.clearRect(0, 0, W, H);
-
-  // time delta for frame-rate-independent dwell
-  const nowSec = performance.now() / 1000;
-  const dt = lastFrameTime === null ? 0.016 : Math.min(0.1, nowSec - lastFrameTime);
-  lastFrameTime = nowSec;
-
-  // the origin re-computes itself every frame — "here" is never the same point twice
-  updateOrigin(nowSec);
-  const cx = originX * W;
-  const cy = originY * H;
-
+ 
+  // the origin re-forms itself every frame — never the same point twice
+  updateOrigin();
+  const cx = originX * W, cy = originY * H;
+ 
   if (result.landmarks && result.landmarks.length > 0) {
-    // index fingertip = landmark 8
-    const tip = result.landmarks[0][8];
-    // video is mirrored on screen, so mirror x to match what the user sees
-    const nx = 1 - tip.x;
+    const tip = result.landmarks[0][8]; // index fingertip
+    const nx = 1 - tip.x;               // mirror to match the flipped video
     const ny = tip.y;
-    const px = nx * W;
-    const py = ny * H;
-
-    // distance from the LIVING origin, normalized 0..~1
-    const dx = nx - originX;
-    const dy = ny - originY;
+    const px = nx * W, py = ny * H;
+ 
+    // distance from the LIVING origin
+    const dx = nx - originX, dy = ny - originY;
     const dist = Math.min(1, Math.hypot(dx, dy) * 2);
-
-    // tremor = frame-to-frame movement of the fingertip
+ 
+    // tremor = frame-to-frame motion of the fingertip
     if (lastX !== null) {
       const v = Math.hypot(nx - lastX, ny - lastY);
-      // short smoothing window; keep the jitter alive
       tremor = tremor * 0.7 + v * 0.3;
     }
     lastX = nx; lastY = ny;
-
-    // --- DWELL: staying at the center grows something; you cannot stay still ---
-    if (dist < DWELL_ZONE) {
-      // inside the zone: fill, but tremble eats the gain, so a shaking hand
-      // barely accumulates. Perfect stillness (impossible) would fill fastest.
-      const stillness = Math.max(0, 1 - tremor * TREMOR_PENALTY);
-      dwell += DWELL_RISE * stillness * dt;
-    } else {
-      dwell -= DWELL_FALL * dt; // left the center: it drains back
-    }
-    dwell = Math.max(0, Math.min(1, dwell));
-
-    updateSound(dist, tremor, dwell);
-    drawSpread(cx, cy, dwell, tremor, nowSec);
-    drawOrigin(cx, cy, dwell, tremor);
-    drawHand(px, py, cx, cy, dist);
+ 
+    updateSound(dist, tremor);
+    drawOrigin(cx, cy);
+    drawHand(px, py, dist);
     statusEl.textContent = "";
+    // both the hand AND the origin are shown at 5 decimals: the point you aim at
+    // is itself being re-measured every frame, never the same value twice.
+    hud.textContent =
+      `hand    ${nx.toFixed(5)}, ${ny.toFixed(5)}\n` +
+      `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}\n` +
+      `dist    ${dist.toFixed(5)}`;
   } else {
-    // no hand: fade to silence, dwell drains away
     if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
     lastX = lastY = null;
     tremor = 0;
-    dwell = Math.max(0, dwell - DWELL_FALL * dt);
-    drawSpread(cx, cy, dwell, 0, nowSec);
-    drawOrigin(cx, cy, dwell, 0);
-    statusEl.textContent = "손을 들어 중심을 겨누세요";
+    drawOrigin(cx, cy);
+    statusEl.textContent = "손가락이 점에 정확히 닿으면 종소리가 울립니다";
+    // even with no hand, the origin keeps re-forming
+    hud.textContent = `origin  ${originX.toFixed(5)}, ${originY.toFixed(5)}`;
   }
-
+ 
   requestAnimationFrame(loop);
 }
-
-function updateSound(dist, tremorVal, dwellVal) {
-  const t = audioCtx.currentTime;
-  // hand present -> audible
-  masterGain.gain.setTargetAtTime(0.22, t, 0.05);
-
-  // --- TUNER LOGIC ---
-  // "closeness" is 1 at the exact center, 0 at the edge.
-  // CONVERGE_POWER sharpens the payoff: the tone only truly locks in
-  // the last little bit of the way to the center.
-  const closeness = Math.pow(1 - dist, CONVERGE_POWER);
-
-  // reference tone detune: far away = out of tune (beats), center = 0 (locked).
-  const detune = (1 - closeness) * MAX_DETUNE_CENTS;
-  refDetune.setTargetAtTime(detune, t, 0.05);
-
-  // the reference tone is loud while off-center (strong beating) and fades
-  // to near-silence at the center, so the lock into one clean tone is obvious.
-  const refLevel = MAX_HARMONIC_GAIN * (1 - closeness);
-  refGain.gain.setTargetAtTime(refLevel, t, 0.05);
-
-  // tremor -> pitch wobble in cents. Purer tone at center makes it stand out.
-  const cents = Math.min(1, tremorVal * 40) * TREMOR_PITCH_DEPTH;
-  const wobble = CENTER_FREQ * Math.pow(2, cents / 1200);
-  pitchParam.setTargetAtTime(wobble, t, 0.02);
-  // reference tracks the same fundamental; its detune offset does the tuning work
-  refOsc.frequency.setTargetAtTime(wobble, t, 0.02);
-
-  // --- GROWTH: dwell opens a chord and a space that weren't there before ---
-  // each partial is born in turn as dwell crosses successive thirds.
-  growGains.forEach((g, i) => {
-    const threshold = i / growGains.length;           // 0, .33, .66
-    const local = Math.max(0, (dwellVal - threshold) * growGains.length);
-    const level = Math.min(1, local) * 0.16;
-    g.gain.setTargetAtTime(level, t, 0.15);
-    // partials also inherit the tremor wobble, so growth never fully stabilizes
-    growOscs[i].frequency.setTargetAtTime(wobble * [1.5, 2.0, 3.0][i], t, 0.05);
-  });
-
-  // reverb space opens with dwell; the dry signal steps back a little
-  reverbGain.gain.setTargetAtTime(dwellVal * 0.9, t, 0.2);
-  dryGain.gain.setTargetAtTime(1 - dwellVal * 0.25, t, 0.2);
-}
-
+ 
 // ---------- drawing ----------
-function drawOrigin(cx, cy, dwellVal, tremorVal) {
-  // cx, cy already carry the living origin's own motion (computed in updateOrigin).
-  // The center is not perturbed by the hand — it was never still on its own.
-  const ox = cx;
-  const oy = cy;
-
-  const glow = 0.35 + dwellVal * 0.5;
-  ctx.strokeStyle = `rgba(220,220,220,${glow})`;
+function drawOrigin(cx, cy) {
+  // the crosshair sits at the living origin, so it is never perfectly still —
+  // the target you aim at was never a fixed place.
+  ctx.strokeStyle = "rgba(220,220,220,0.4)";
   ctx.lineWidth = 1;
-  // crosshair
   ctx.beginPath();
-  ctx.moveTo(ox - 14, oy); ctx.lineTo(ox - 4, oy);
-  ctx.moveTo(ox + 4, oy); ctx.lineTo(ox + 14, oy);
-  ctx.moveTo(ox, oy - 14); ctx.lineTo(ox, oy - 4);
-  ctx.moveTo(ox, oy + 4); ctx.lineTo(ox, oy + 14);
+  ctx.moveTo(cx - 13, cy); ctx.lineTo(cx - 4, cy);
+  ctx.moveTo(cx + 4, cy); ctx.lineTo(cx + 13, cy);
+  ctx.moveTo(cx, cy - 13); ctx.lineTo(cx, cy - 4);
+  ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy + 13);
   ctx.stroke();
-
-  const pulse = 6 + dwellVal * 10;
   ctx.beginPath();
-  ctx.arc(ox, oy, pulse, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(240,240,240,${0.5 + dwellVal * 0.4})`;
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(240,240,240,0.55)";
   ctx.fill();
 }
-
-// concentric waves that spread from the center as dwell grows.
-// tremor perturbs the rings so the spreading never becomes calm.
-function drawSpread(cx, cy, dwellVal, tremorVal, nowSec) {
-  if (dwellVal <= 0.001) return;
-  const W = window.innerWidth, H = window.innerHeight;
-  const maxR = Math.hypot(W, H) * 0.5;
-
-  // soft radial wash of light that grows with dwell
-  const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * (0.3 + dwellVal * 0.9));
-  wash.addColorStop(0, `rgba(255,255,255,${dwellVal * 0.10})`);
-  wash.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, W, H);
-
-  // expanding rings — number and reach grow with dwell
-  const rings = Math.floor(2 + dwellVal * 5);
-  for (let i = 0; i < rings; i++) {
-    const phase = (nowSec * 0.25 + i / rings) % 1;
-    const r = phase * maxR * (0.25 + dwellVal * 0.9);
-    const wobble = 1 + Math.sin(nowSec * 8 + i) * tremorVal * 4; // tremble distorts the ring
-    const alpha = (1 - phase) * dwellVal * 0.4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * wobble, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(235,235,235,${alpha})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-}
-
-function drawHand(px, py, cx, cy, dist) {
+ 
+function drawHand(px, py, dist) {
   const closeness = 1 - dist;
-
-  // fingertip marker — converges (shrinks, brightens) near center
+  // fingertip marker: brightens and tightens as it nears the (moving) center,
+  // but the center keeps slipping, so it never quite settles.
   const r = 10 - closeness * 5;
   ctx.beginPath();
   ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = `rgba(245,245,245,${0.4 + closeness * 0.6})`;
   ctx.fill();
 }
-
-// ---------- controls ----------
-// no HUD, no toggle — the tremble is shown, not numbered.
-
+ 
+// ---------- info overlay ----------
+function toggleInfo(open) {
+  info.classList.toggle("show", open);
+  infoBtn.classList.toggle("open", open);
+}
+infoBtn.addEventListener("click", () => toggleInfo(!info.classList.contains("show")));
+infoClose.addEventListener("click", () => toggleInfo(false));
+ 
+// ---------- start ----------
 startBtn.addEventListener("click", async () => {
   startBtn.disabled = true;
   startBtn.textContent = "불러오는 중…";
   try {
     resize();
     setupAudio();
-    // iOS unlock: play a silent buffer inside the user gesture
+    // iOS unlock: silent buffer inside the user gesture
     const buf = audioCtx.createBuffer(1, 1, 22050);
     const src = audioCtx.createBufferSource();
     src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
@@ -531,7 +630,7 @@ startBtn.addEventListener("click", async () => {
     await startCamera();
     running = true;
     intro.classList.add("fade-out");
-    statusEl.textContent = "손을 들어 중심을 겨누세요";
+    statusEl.textContent = "손가락이 점에 정확히 닿으면 종소리가 울립니다";
     loop();
   } catch (err) {
     console.error(err);
@@ -541,7 +640,7 @@ startBtn.addEventListener("click", async () => {
     if (err && err.name === "NotAllowedError")
       msg = "카메라 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.";
     else if (err && err.name === "NotFoundError")
-      msg = "웹캠을 찾을 수 없습니다.";
+      msg = "카메라를 찾을 수 없습니다.";
     intro.querySelectorAll("p")[0].textContent = msg;
   }
 });
