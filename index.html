@@ -179,9 +179,11 @@ const hud     = document.getElementById("hud");
 const toggle  = document.getElementById("toggle");
 
 // ---------- config ----------
-const CENTER_FREQ = 220;      // the single origin tone (Hz) — one center for everyone
-const MAX_HARMONIC_GAIN = 0.5;
-const TREMOR_PITCH_DEPTH = 90; // cents of pitch wobble at full tremor
+const CENTER_FREQ = 220;        // the single origin tone (Hz) — one center for everyone
+const MAX_HARMONIC_GAIN = 0.35; // loudness of the "reference" tone that beats against the fundamental
+const TREMOR_PITCH_DEPTH = 90;  // cents of pitch wobble at full tremor
+const MAX_DETUNE_CENTS = 55;    // how far the reference tone drifts out of tune at the edge
+const CONVERGE_POWER = 2.2;     // >1 makes the "in tune" zone snap tighter near the very center
 // ----------------------------
 
 let landmarker = null;
@@ -190,7 +192,7 @@ let running = false;
 let showData = false;
 
 // audio nodes
-let osc, harmOsc, harmGain, masterGain, pitchParam;
+let osc, refOsc, refGain, masterGain, pitchParam, refDetune;
 
 function setupAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -200,24 +202,27 @@ function setupAudio() {
   osc.type = "sine";
   osc.frequency.value = CENTER_FREQ;
 
-  // a detuned harmonic layer that grows with distance (impurity when off-center)
-  harmOsc = audioCtx.createOscillator();
-  harmOsc.type = "triangle";
-  harmOsc.frequency.value = CENTER_FREQ * 2;
+  // a SECOND sine at the same pitch — the "reference" you tune against.
+  // Off-center it is detuned and beats against the fundamental (wah-wah).
+  // At the center the detune goes to 0 and the two lock into one clean tone.
+  refOsc = audioCtx.createOscillator();
+  refOsc.type = "sine";
+  refOsc.frequency.value = CENTER_FREQ;
 
-  harmGain = audioCtx.createGain();
-  harmGain.gain.value = 0;
+  refGain = audioCtx.createGain();
+  refGain.gain.value = 0;
 
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0; // silent until a hand appears
 
   osc.connect(masterGain);
-  harmOsc.connect(harmGain).connect(masterGain);
+  refOsc.connect(refGain).connect(masterGain);
   masterGain.connect(audioCtx.destination);
 
   osc.start();
-  harmOsc.start();
+  refOsc.start();
   pitchParam = osc.frequency;
+  refDetune = refOsc.detune; // in cents
 }
 
 async function setupHands() {
@@ -353,16 +358,27 @@ function updateSound(dist, tremorVal) {
   // hand present -> audible
   masterGain.gain.setTargetAtTime(0.22, t, 0.05);
 
-  // distance -> harmonic impurity (0 at center = pure sine)
-  const harm = dist * MAX_HARMONIC_GAIN;
-  harmGain.gain.setTargetAtTime(harm, t, 0.05);
+  // --- TUNER LOGIC ---
+  // "closeness" is 1 at the exact center, 0 at the edge.
+  // CONVERGE_POWER sharpens the payoff: the tone only truly locks in
+  // the last little bit of the way to the center.
+  const closeness = Math.pow(1 - dist, CONVERGE_POWER);
+
+  // reference tone detune: far away = out of tune (beats), center = 0 (locked).
+  const detune = (1 - closeness) * MAX_DETUNE_CENTS;
+  refDetune.setTargetAtTime(detune, t, 0.05);
+
+  // the reference tone is loudest in the mid-range where the beating is the
+  // clearest cue, and eases off right at the center so the lock feels clean.
+  const refLevel = MAX_HARMONIC_GAIN * (1 - closeness) + 0.12 * closeness;
+  refGain.gain.setTargetAtTime(refLevel, t, 0.05);
 
   // tremor -> pitch wobble in cents. Purer tone at center makes it stand out.
   const cents = Math.min(1, tremorVal * 40) * TREMOR_PITCH_DEPTH;
   const wobble = CENTER_FREQ * Math.pow(2, cents / 1200);
   pitchParam.setTargetAtTime(wobble, t, 0.02);
-  // keep harmonic tracking the fundamental (2x)
-  harmOsc.frequency.setTargetAtTime(wobble * 2, t, 0.02);
+  // reference tracks the same fundamental; its detune offset does the tuning work
+  refOsc.frequency.setTargetAtTime(wobble, t, 0.02);
 }
 
 // ---------- drawing ----------
